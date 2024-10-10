@@ -76,3 +76,30 @@ def get_colbert_e2e(dataset):
 
     colbert_e2e = pyterrier_colbert_factory.end_to_end()
     return colbert_e2e
+
+
+def get_retriever(dataset, retriever):
+    """
+    Returns the specified retriever for the given dataset.
+
+    :param dataset: Dataset name.
+    :param retriever: Retriever name.
+    :return: PyTerrier retriever object.
+    """
+    if retriever == "bm25":
+        # Initialize BM25 retriever using the dataset index
+        return pt.terrier.Retriever.from_dataset(dataset, "terrier_stemmed", wmodel="BM25")
+
+    elif retriever == "faiss":
+        raise NotImplementedError("FAISS retriever is not functional yet.")
+
+        # Initialize FAISS retriever using the dataset documents
+        documents = dataset.get_corpus()
+        return FaissRetriever(documents)
+
+    elif retriever == "colbert":
+        # Initialize ColBERT retriever using the dataset documents
+        return get_colbert_e2e(dataset)
+
+    else:
+        raise ValueError(f"Invalid retriever: {retriever}")

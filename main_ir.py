@@ -1,24 +1,11 @@
-# huggingface attempt
-# from datasets import load_dataset
-#
-# queries = load_dataset('irds/trec-fair_2022_train', 'queries', trust_remote_code=True)
-#
-# print(queries)
-# print(queries[0])
-#
-# qrels = load_dataset('irds/trec-fair_2022_train', 'qrels', trust_remote_code=True)
-#
-# print(qrels)
-# print(qrels[0])
+import argparse, os, sys
 
-import argparse, random, string, os, sys
+from private_obfuscation.obfuscators import obfuscate_queries
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.join(CDIR, "..")
 sys.path.append(CDIR)
 sys.path.append(WORKDIR)
-print(CDIR)
-print(WORKDIR)
 
 # PyTerrier attempt
 import pyterrier as pt
@@ -29,8 +16,7 @@ if not pt.started():
 
 from pyterrier.measures import RR, nDCG, AP
 
-from private_obfuscation.retrievers import FaissRetriever, get_colbert_e2e
-
+from private_obfuscation.retrievers import get_retriever
 
 obfuscation_types = [
     'none',
@@ -38,7 +24,6 @@ obfuscation_types = [
 ]
 retrievers = [
     'bm25',
-    'faiss',
     'colbert'
 ]
 
@@ -46,22 +31,12 @@ retrievers = [
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--obfuscation", type=str, default="none", choices=obfuscation_types)
-    parser.add_argument("--retriever", type=str, default="colbert", choices=retrievers)
+    parser.add_argument("--retriever", type=str, default="bm25", choices=retrievers)
     parser.add_argument("--dataset", type=str, default="vaswani")
-
     args = parser.parse_args()
 
     return args
 
-
-# Function to obfuscate queries by replacing random characters
-def obfuscate_query(query):
-    chars = list(query)
-    num_chars_to_change = len(chars) // 3  # Change 1/3 of the characters
-    for _ in range(num_chars_to_change):
-        idx = random.randint(0, len(chars) - 1)  # Random index
-        chars[idx] = random.choice(string.ascii_letters)  # Replace with random letter
-    return ''.join(chars)
 
 
 def main(args):
@@ -71,27 +46,10 @@ def main(args):
     # Get the original topics (queries) from the dataset
     topics = dataset.get_topics()
 
-    topics["original_query"] = topics["query"]
+    # Obfuscate the queries
+    topics = obfuscate_queries(topics, args.obfuscation)
 
-    if args.obfuscation == "random_char":
-        # Obfuscate the queries
-        topics["query"] = topics["query"].apply(obfuscate_query)
-
-    if args.retriever == "bm25":
-        # Initialize BM25 retriever using the dataset index
-        retriever = pt.terrier.Retriever.from_dataset(dataset, "terrier_stemmed", wmodel="BM25")
-
-    elif args.retriever == "faiss":
-        # Initialize FAISS retriever using the dataset documents
-        documents = dataset.get_corpus()
-        retriever = FaissRetriever(documents)
-
-    elif args.retriever == "colbert":
-        # Initialize ColBERT retriever using the dataset documents
-        retriever = get_colbert_e2e(args.dataset)
-
-    else:
-        raise ValueError(f"Invalid retriever: {args.retriever}")
+    retriever = get_retriever(args.dataset, args.retriever)
 
     # Retrieve results using the obfuscated queries
     results = retriever.transform(topics)
@@ -100,6 +58,7 @@ def main(args):
     i = 0
     for index, row in topics.iterrows():
         print("-" * 50)
+        print(f"Query {i + 1}")
         query = row['query']
         print(f"Original Query: {row['original_query']}")
         print(f"Obfuscated Query: {query}")
