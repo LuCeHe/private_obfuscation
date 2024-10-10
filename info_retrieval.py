@@ -13,6 +13,13 @@
 
 import argparse, random, string, os, sys
 
+CDIR = os.path.dirname(os.path.realpath(__file__))
+WORKDIR = os.path.join(CDIR, "..")
+sys.path.append(CDIR)
+sys.path.append(WORKDIR)
+print(CDIR)
+print(WORKDIR)
+
 # PyTerrier attempt
 import pyterrier as pt
 
@@ -24,10 +31,6 @@ from pyterrier.measures import RR, nDCG, AP
 
 from private_obfuscation.retrievers import FaissRetriever, get_colbert_e2e
 
-CDIR = os.path.dirname(os.path.realpath(__file__))
-WORKDIR = os.path.join(CDIR, "..")
-sys.path.append(CDIR)
-sys.path.append(WORKDIR)
 
 obfuscation_types = [
     'none',
