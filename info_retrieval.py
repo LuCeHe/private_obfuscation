@@ -24,10 +24,8 @@ from pyterrier.measures import RR, nDCG, AP
 
 from private_obfuscation.retrievers import FaissRetriever, get_colbert_e2e
 
-
 CDIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(CDIR)
-
 
 obfuscation_types = [
     'none',
