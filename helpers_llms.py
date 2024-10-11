@@ -79,7 +79,7 @@ def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
 
 
 def use_huggingface(
-        personality="You are a helpful assistant that translates English to French. Translate the user sentence.",
+        personality="You are a helpful assistant that translates English to French. Translate the USER SENTENCE. USER SENTENCE:",
         questions=["What is the capital of France?", "What is the capital of Germany?"],
         model_id='mambaxl'
 ):
@@ -96,14 +96,12 @@ def use_huggingface(
     print(f"Generating responses with {model_id}...")
     for question in tqdm(questions):
         print('-' * 50)
-        full_question = f"{personality} {question}. Answer:".replace('..', '.').replace('?.', '.')
+        full_question = f"{personality} {question}. SOLUTION:".replace('..', '.').replace('?.', '?')
 
         inputs = tokenizer(full_question, return_tensors="pt")
         inputs = {k: v.to(device) for k, v in inputs.items()}
-        print(inputs)
         if 'mamba' in model_id:
             del inputs['attention_mask']
-        print(inputs)
         outputs = model.generate(**inputs, do_sample=True, top_p=0.2, max_new_tokens=40)
         reply = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
         print('full_question:', full_question)
