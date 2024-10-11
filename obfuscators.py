@@ -1,8 +1,13 @@
-import os, random, string, re
+import os, random, string, re, sys
 from tqdm import tqdm
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+CDIR = os.path.dirname(os.path.realpath(__file__))
+WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
+
+sys.path.append(WORKDIR)
 
 from private_obfuscation.helpers_llms import use_chatgpt
 from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR
