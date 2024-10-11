@@ -99,6 +99,10 @@ def use_huggingface(
         full_question = f"{personality} {question}. Answer:".replace('..', '.').replace('?.', '.')
 
         inputs = tokenizer(full_question, return_tensors="pt")
+        print(inputs)
+        if 'mamba' in model_id:
+            del inputs['attention_mask']
+        print(inputs)
         outputs = model.generate(**inputs, do_sample=True, top_p=0.2, max_new_tokens=40)
         reply = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
         print('full_question:', full_question)
