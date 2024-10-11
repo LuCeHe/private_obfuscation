@@ -1,10 +1,7 @@
 import os, random, string
 from tqdm import tqdm
 
-CDIR = os.path.dirname(os.path.realpath(__file__))
-WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
-DATADIR = os.path.abspath(os.path.join(WORKDIR, "data", "private_obfuscation"))
-os.makedirs(DATADIR, exist_ok=True)
+from private_obfuscation.paths import PODATADIR
 
 
 # Function to obfuscate queries by replacing random characters
@@ -41,7 +38,7 @@ def chatgpt_obfuscator(queries, obfuscation_type):
             questions=queries
         )
     else:
-        obfuscations = {query: obfuscate_query(query) for query in queries}
+        obfuscations = {query: random_obfuscate_query(query) for query in queries}
 
     return obfuscations
 
@@ -57,7 +54,7 @@ def save_obfuscations():
     dataset_name = 'vaswani'
     obfuscation_type = 'improve'
 
-    path = os.path.join(DATADIR, f"obfuscations_{dataset_name}_{obfuscation_type}.txt")
+    path = os.path.join(PODATADIR, f"obfuscations_{dataset_name}_{obfuscation_type}.txt")
 
     if not os.path.exists(path):
         # Load a dataset (use any small available dataset)
@@ -85,7 +82,7 @@ def save_obfuscations():
 
 
 def get_saved_obfuscations(dataset_name, obfuscation_type):
-    path = os.path.join(DATADIR, f"obfuscations_{dataset_name}_{obfuscation_type}.txt")
+    path = os.path.join(PODATADIR, f"obfuscations_{dataset_name}_{obfuscation_type}.txt")
     if not os.path.exists(path):
         raise FileNotFoundError("Obfuscations file not found.")
     with open(path, 'r') as f:
@@ -93,43 +90,8 @@ def get_saved_obfuscations(dataset_name, obfuscation_type):
 
     def obfuscator(query):
         return obfuscations[query]
+
     return obfuscator
-
-def use_chatgpt(
-        personality="You are a helpful assistant that translates English to French. Translate the user sentence.",
-        questions=["What is the capital of France?", "What is the capital of Germany?"],
-):
-    os.path.join(WORKDIR, 'all_stuff.py', )
-
-    from all_stuff import api_key_openai
-
-    # os.environ["OPENAI_API_KEY"] = api_key_openai
-
-    from langchain_openai import ChatOpenAI
-
-    api_model = 'gpt-3.5-turbo'
-    llm = ChatOpenAI(
-        model=api_model,
-        temperature=0,
-        max_tokens=None,
-        timeout=None,
-        max_retries=2,
-        api_key=api_key_openai,
-    )
-
-    answers = []
-    print("Generating responses with ChatGPT...")
-    for question in tqdm(questions):
-        messages = [
-            ("system", personality),
-            ("human", question),
-        ]
-        ai_msg = llm.invoke(messages).content
-        print(ai_msg)
-        answers.append(ai_msg)
-
-    pairs = {question: answer for question, answer in zip(questions, answers)}
-    return pairs
 
 
 def obfuscate_queries(topics, obfuscation_type):
@@ -144,6 +106,7 @@ def obfuscate_queries(topics, obfuscation_type):
     obfuscator = get_obfuscator(obfuscation_type)
     topics["query"] = topics["query"].apply(obfuscator)
     return topics
+
 
 if __name__ == "__main__":
     save_obfuscations()

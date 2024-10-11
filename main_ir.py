@@ -1,13 +1,11 @@
 import argparse, os, sys
 
 from private_obfuscation.obfuscators import obfuscate_queries
+from private_obfuscation.paths import CDIR, WORKDIR
 
-CDIR = os.path.dirname(os.path.realpath(__file__))
-WORKDIR = os.path.join(CDIR, "..")
 sys.path.append(CDIR)
 sys.path.append(WORKDIR)
 
-# PyTerrier attempt
 import pyterrier as pt
 
 # Initialize PyTerrier
@@ -36,7 +34,6 @@ def parse_args():
     args = parser.parse_args()
 
     return args
-
 
 
 def main(args):
