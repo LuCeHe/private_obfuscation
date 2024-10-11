@@ -99,6 +99,7 @@ def use_huggingface(
         full_question = f"{personality} {question}. Answer:".replace('..', '.').replace('?.', '.')
 
         inputs = tokenizer(full_question, return_tensors="pt")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         print(inputs)
         if 'mamba' in model_id:
             del inputs['attention_mask']
