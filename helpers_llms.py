@@ -1,8 +1,14 @@
-import os
+import os, sys
 from tqdm import tqdm
 
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+
+CDIR = os.path.dirname(os.path.realpath(__file__))
+WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
+
+sys.path.append(WORKDIR)
+
 from private_obfuscation.paths import WORKDIR, DATADIR
 
 hf_model_ids = {

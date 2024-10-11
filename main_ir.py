@@ -1,7 +1,12 @@
 import argparse, os, sys
 
+CDIR = os.path.dirname(os.path.realpath(__file__))
+WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
+
+sys.path.append(WORKDIR)
+
+
 from private_obfuscation.obfuscators import obfuscate_queries
-from private_obfuscation.paths import CDIR, WORKDIR
 
 
 import pyterrier as pt
