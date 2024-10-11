@@ -3,8 +3,6 @@ import argparse, os, sys
 from private_obfuscation.obfuscators import obfuscate_queries
 from private_obfuscation.paths import CDIR, WORKDIR
 
-sys.path.append(CDIR)
-sys.path.append(WORKDIR)
 
 import pyterrier as pt
 
