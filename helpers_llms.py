@@ -14,6 +14,7 @@ from private_obfuscation.paths import WORKDIR, DATADIR
 hf_model_ids = {
     'mamba': 'state-spaces/mamba-130m-hf',
     'mambaxl': 'state-spaces/mamba-2.8b-hf',
+    'falconmamba': 'tiiuae/falcon-mamba-7b-instruct',
     'gpt2': 'openai-community/gpt2',
     'gpt2xl': 'openai-community/gpt2-xl',
     'llama3': 'meta-llama/Llama-3.2-1B',
@@ -111,6 +112,6 @@ def use_huggingface(
     pairs = {question: answer for question, answer in zip(questions, answers)}
     return pairs
 
-
 if __name__ == '__main__':
-    use_huggingface()
+    # use_huggingface()
+    pass
