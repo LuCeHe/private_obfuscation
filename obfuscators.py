@@ -4,7 +4,6 @@ from tqdm import tqdm
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-
 from private_obfuscation.helpers_llms import use_chatgpt
 from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR
 
@@ -122,7 +121,7 @@ def obfuscate_queries(topics, obfuscation_type, dataset_name='vaswani'):
     return topics
 
 
-def obfuscation_distance(sentence1, sentence2, distance_type = 'tfidfcosine'):
+def obfuscation_distance(sentence1, sentence2, distance_type='tfidfcosine'):
     # to implement: bm25, bleu, my scan technique, etc.
     # sentence1 = 'measurement of dielectric constant of liquids by the use of microwave techniques'
     # sentence2 = 'How can microwave techniques be utilized to measure the dielectric constant of liquids effectively?'
@@ -153,7 +152,7 @@ def obfuscation_distance(sentence1, sentence2, distance_type = 'tfidfcosine'):
 def get_distance_obfuscations(obfuscations):
     # Calculate the distance between the original and obfuscated queries
     distances = []
-    print('Calculating obfuscation distances...')
+    print('\nCalculating obfuscation distances...')
     for query, obfuscated_query in tqdm(obfuscations.items()):
         distance = obfuscation_distance(query, obfuscated_query)
         distances.append(distance)
@@ -161,14 +160,27 @@ def get_distance_obfuscations(obfuscations):
     mean_distance = sum(distances) / len(distances)
     std_distance = (sum((d - mean_distance) ** 2 for d in distances) / len(distances)) ** 0.5
 
-    print(f"Mean and Std distance between original and obfuscated queries: {mean_distance:.2f} pm {std_distance:.2f}")
+    print(f"Mean and Std TF-IDF/cosine distance between original and obfuscated queries: {mean_distance:.2f} pm {std_distance:.2f}")
     return mean_distance
+
 
 if __name__ == "__main__":
     # obfuscations = create_obfuscations()
     dataset_name = 'vaswani'
     obfuscation_type = 'improve'
     _, obfuscations = get_saved_llm_obfuscations(dataset_name, obfuscation_type, return_obfuscations=True)
+
+    i = 0
+    for query, obfuscated_query in obfuscations.items():
+        print('-' * 50)
+        print(f"Original Query:   {query}")
+        obfuscation = re.sub(r'[^\w\s]', '', obfuscated_query).lower()
+        print(f"Obfuscated Query: {obfuscation}")
+        i += 1
+        if i > 5:
+            break
+    print('-' * 50)
+
     get_distance_obfuscations(obfuscations)
     # use_chatgpt()
     # obfuscation_distance()
