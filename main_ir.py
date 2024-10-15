@@ -5,7 +5,7 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.obfuscators import obfuscate_queries
+from private_obfuscation.reformulators import obfuscate_queries
 
 import pyterrier as pt
 
@@ -18,7 +18,7 @@ from pyterrier.measures import RR, nDCG, AP
 
 from private_obfuscation.retrievers import get_retriever
 
-obfuscation_types = [
+reformulation_types = [
     'none',
     'random_char',
     'chatgpt_improve',
@@ -31,7 +31,7 @@ retrievers = [
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--obfuscation", type=str, default="none", choices=obfuscation_types)
+    parser.add_argument("--reformulation", type=str, default="none", choices=reformulation_types)
     parser.add_argument("--retriever", type=str, default="bm25", choices=retrievers)
     parser.add_argument("--dataset", type=str, default="vaswani")
     parser.add_argument("--notes", type=str, default="")
@@ -49,8 +49,8 @@ def main(args):
     # Get the original topics (queries) from the dataset
     topics = dataset.get_topics()
 
-    # Obfuscate the queries
-    topics = obfuscate_queries(topics, args.obfuscation)
+    # Reformulate the queries
+    topics = reformulate_queries(topics, args.reformulation)
 
     retriever = get_retriever(args.dataset, args.retriever)
 
