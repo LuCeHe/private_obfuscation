@@ -156,6 +156,7 @@ def reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kw
 
         # Calculate the cosine similarity between the two sentences
         similarity_score = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
+
     elif distance_type == 'inter':
         ps = kwargs['ps']
         stop_words = kwargs['stop_words']
@@ -163,9 +164,13 @@ def reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kw
         set1 = simplify_sentence(sentence1, ps, stop_words)
         set2 = simplify_sentence(sentence2, ps, stop_words)
 
+        # print('set1:', set1)
+        # print('set2:', set2)
+
         z = set1.intersection(set2)
 
         similarity_score = len(z) / min(len(set1), len(set2))
+        # print('similarity_score', similarity_score)
 
     else:
         raise ValueError(f"Invalid distance type: {distance_type}")
@@ -203,7 +208,8 @@ def get_distance_reformulations(reformulations, distance_type='tfidfcosine'):
     return mean_distance
 
 
-if __name__ == "__main__":
+
+def test():
     # reformulations = create_reformulations()
     dataset_name = 'vaswani'
     reformulation_type = 'improve'
@@ -224,3 +230,28 @@ if __name__ == "__main__":
     get_distance_reformulations(reformulations, 'inter')
     # use_chatgpt()
     # reformulation_distance()
+
+def test_small_example():
+    sentence1 = 'find a nice restaurant close to Duomo'
+    sentence2 = 'look for a good restaurant near Sforzesco'
+
+    kwargs = {}
+    import nltk
+    nltk.download('stopwords')
+    nltk.download('punkt')
+
+    from nltk.corpus import stopwords
+
+    from nltk.stem import PorterStemmer
+
+    kwargs['ps'] = PorterStemmer()
+    kwargs['stop_words'] = set(stopwords.words('english'))
+    similarity = reformulation_distance(sentence1, sentence2, distance_type='inter', kwargs=kwargs)
+    print('similarity inter:', similarity)
+    similarity = reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kwargs=kwargs)
+    print('similarity tfidfcosine:', similarity)
+
+if __name__ == "__main__":
+    test()
+    # test_small_example()
+

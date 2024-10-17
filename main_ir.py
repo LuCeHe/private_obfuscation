@@ -5,7 +5,7 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.reformulators import obfuscate_queries
+from private_obfuscation.reformulators import obfuscate_queries, reformulate_queries
 
 import pyterrier as pt
 
@@ -52,25 +52,8 @@ def main(args):
     # Reformulate the queries
     topics = reformulate_queries(topics, args.reformulation)
 
+    # Get the retriever
     retriever = get_retriever(args.dataset, args.retriever)
-
-    # Retrieve results using the obfuscated queries
-    results = retriever.transform(topics)
-
-    if 'printobfres' in args.notes:
-        # Print the obfuscated queries and corresponding results
-        i = 0
-        for index, row in topics.iterrows():
-            print("-" * 50)
-            print(f"Query {i + 1}")
-            query = row['query']
-            print(f"Original Query: {row['original_query']}")
-            print(f"Obfuscated Query: {query}")
-            print("Top Results:")
-            print(results[results['query'] == query][['docno', 'rank', 'score']].head(), '\n')
-            i += 1
-            if i == 5:
-                break
 
     # Optionally, evaluate the results if you have qrels (ground truth)
     qrels = dataset.get_qrels()
