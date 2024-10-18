@@ -187,11 +187,10 @@ def tests_with_covid():
 
 def tests_with_bair(dataset_name):
     # unsure: irds:beir/quora/test
-    too_largs_ds = ['irds:beir/msmarco/train']
+    too_largs_ds = ['irds:beir/msmarco/train', 'irds:beir/fever/dev', 'beir/msmarco/dev']
     nice_ds = [
         'irds:beir/webis-touche2020/v2', 'irds:beir/trec-covid', 'irds:beir/scifact/train', 'irds:beir/nq',
         'irds:beir/nfcorpus/train',
-        'beir/msmarco/dev',
     ]
     assert dataset_name in nice_ds, f"Dataset name must be one of {nice_ds}"
     index_name = f"{dataset_name.replace('irds:', '').split('/')[1]}-index"
