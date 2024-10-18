@@ -1,3 +1,5 @@
+
+import os
 import pyterrier as pt
 from sentence_transformers import SentenceTransformer
 import numpy as np
@@ -5,6 +7,8 @@ from pyterrier_colbert.ranking import ColBERTFactory
 import pyterrier_colbert.indexing
 import pyterrier_colbert as pycolbert
 import faiss
+
+from private_obfuscation.paths import DATADIR
 
 # Ensure PyTerrier is started
 if not pt.started():
@@ -121,3 +125,94 @@ def get_retriever(dataset_name, retriever):
         raise ValueError(f"Invalid retriever: {retriever}")
 
     return retriever
+
+
+def tests_with_webis():
+    # this code is functional
+
+    import pyterrier as pt
+    # dataset = pt.datasets.get_dataset('irds:cord19/trec-covid')
+    # indexer = pt.index.IterDictIndexer('./cord19-index')
+    # fields = ('title', 'abstract')
+    # topics = 'title'
+    dataset = pt.datasets.get_dataset('irds:beir/webis-touche2020/v2')
+    indexer = pt.index.IterDictIndexer('./webis-index', meta={'docno': 39})
+    fields = ('text',)
+    topics = 'text'
+
+    indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
+    index = pt.IndexFactory.of(indexref)
+    # indexer = pt.TRECCollectionIndexer("./index")
+    # indexref = indexer.index(dataset.get_corpus())
+    # index = pt.IndexFactory.of(indexref)
+
+    DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
+    BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
+    # this runs an experiment to obtain results on the TREC COVID queries and qrels
+    pt.Experiment(
+        [DPH_br, BM25_br],
+        dataset.get_topics(topics),
+        dataset.get_qrels(),
+        eval_metrics=["P.5", "P.10", "ndcg_cut.10", "map"])
+
+
+def tests_with_covid():
+    # this code is functional
+
+    import pyterrier as pt
+    # dataset = pt.datasets.get_dataset('irds:cord19/trec-covid')
+    # indexer = pt.index.IterDictIndexer('./cord19-index')
+    # fields = ('title', 'abstract')
+    # topics = 'title'
+    dataset = pt.datasets.get_dataset('irds:beir/trec-covid')
+    indexer = pt.index.IterDictIndexer('./covid-index', meta={'docno': 39})
+    fields = ('text',)
+    topics = 'text'
+
+    indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
+    index = pt.IndexFactory.of(indexref)
+    # indexer = pt.TRECCollectionIndexer("./index")
+    # indexref = indexer.index(dataset.get_corpus())
+    # index = pt.IndexFactory.of(indexref)
+
+    DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
+    BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
+    # this runs an experiment to obtain results on the TREC COVID queries and qrels
+    pt.Experiment(
+        [DPH_br, BM25_br],
+        dataset.get_topics(topics),
+        dataset.get_qrels(),
+        eval_metrics=["P.5", "P.10", "ndcg_cut.10", "map"])
+
+
+def tests_with_bair(dataset_name):
+    # unsure: irds:beir/quora/test
+    nice_ds = ['irds:beir/webis-touche2020/v2', 'irds:beir/trec-covid', 'irds:beir/scifact/train', ]
+    assert dataset_name in nice_ds, f"Dataset name must be one of {nice_ds}"
+    index_name = f"{dataset_name.replace('irds:', '').split('/')[1]}-index"
+    index_path = os.path.join(DATADIR, index_name)
+
+    import pyterrier as pt
+    # dataset = pt.datasets.get_dataset('irds:cord19/trec-covid')
+    # indexer = pt.index.IterDictIndexer('./cord19-index')
+    # fields = ('title', 'abstract')
+    # topics = 'title'
+    dataset = pt.datasets.get_dataset(dataset_name)
+    indexer = pt.index.IterDictIndexer(index_path, meta={'docno': 39})
+    fields = ('text',)
+    topics = 'text'
+
+    indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
+    index = pt.IndexFactory.of(indexref)
+    # indexer = pt.TRECCollectionIndexer("./index")
+    # indexref = indexer.index(dataset.get_corpus())
+    # index = pt.IndexFactory.of(indexref)
+
+    DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
+    BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
+    # this runs an experiment to obtain results on the TREC COVID queries and qrels
+    pt.Experiment(
+        [DPH_br, BM25_br],
+        dataset.get_topics(topics),
+        dataset.get_qrels(),
+        eval_metrics=["P.5", "P.10", "ndcg_cut.10", "map"])
