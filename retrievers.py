@@ -78,7 +78,7 @@ def get_colbert_e2e(dataset):
     return colbert_e2e
 
 
-def get_retriever(dataset, retriever):
+def get_retriever(dataset_name, retriever):
     """
     Returns the specified retriever for the given dataset.
 
@@ -87,19 +87,37 @@ def get_retriever(dataset, retriever):
     :return: PyTerrier retriever object.
     """
     if retriever == "bm25":
-        # Initialize BM25 retriever using the dataset index
-        return pt.terrier.Retriever.from_dataset(dataset, "terrier_stemmed", wmodel="BM25")
+        if dataset_name == "vaswani":
+            # Initialize BM25 retriever using the dataset index
+            retriever =  pt.terrier.Retriever.from_dataset(dataset_name, "terrier_stemmed", wmodel="BM25")
+        elif 'trec' in dataset_name.lower():
+            # Initialize BM25 retriever using the dataset documents
+            documents = pt.get_dataset(dataset_name)
+            # retriever =  pt.BatchRetrieve(pt.get_dataset(dataset_name), wmodel="BM25")
+
+            indexer = pt.TRECCollectionIndexer("./index")
+            # this downloads the file msmarco-docs.trec.gz
+            indexref = indexer.index(documents.get_corpus())
+            index = pt.IndexFactory.of(indexref)
+
+            # DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
+            retriever = pt.terrier.Retriever(index, wmodel="BM25") % 100
+
+
+
 
     elif retriever == "faiss":
         raise NotImplementedError("FAISS retriever is not functional yet.")
 
         # Initialize FAISS retriever using the dataset documents
         documents = dataset.get_corpus()
-        return FaissRetriever(documents)
+        retriever =  FaissRetriever(documents)
 
     elif retriever == "colbert":
         # Initialize ColBERT retriever using the dataset documents
-        return get_colbert_e2e(dataset)
+        retriever =  get_colbert_e2e(dataset_name)
 
     else:
         raise ValueError(f"Invalid retriever: {retriever}")
+
+    return retriever

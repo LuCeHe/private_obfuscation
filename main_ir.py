@@ -5,7 +5,7 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.reformulators import obfuscate_queries, reformulate_queries
+from private_obfuscation.reformulators import reformulate_queries
 
 import pyterrier as pt
 
@@ -28,12 +28,17 @@ retrievers = [
     'colbert'
 ]
 
+datasets_tested = [
+    'vaswani',
+    'trec-robust-2004'
+]
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reformulation", type=str, default="none", choices=reformulation_types)
     parser.add_argument("--retriever", type=str, default="bm25", choices=retrievers)
-    parser.add_argument("--dataset", type=str, default="vaswani")
+    parser.add_argument("--dataset_name", type=str, default="trec-robust-2004")
     parser.add_argument("--notes", type=str, default="")
     args = parser.parse_args()
 
@@ -44,7 +49,7 @@ def main(args):
     print(json.dumps(args.__dict__, indent=2))
 
     # Load a dataset (use any small available dataset)
-    dataset = pt.get_dataset(args.dataset)
+    dataset = pt.get_dataset(args.dataset_name)
 
     # Get the original topics (queries) from the dataset
     topics = dataset.get_topics()
@@ -53,7 +58,7 @@ def main(args):
     topics = reformulate_queries(topics, args.reformulation)
 
     # Get the retriever
-    retriever = get_retriever(args.dataset, args.retriever)
+    retriever = get_retriever(args.dataset_name, args.retriever)
 
     # Optionally, evaluate the results if you have qrels (ground truth)
     qrels = dataset.get_qrels()
