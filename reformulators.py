@@ -1,6 +1,11 @@
 import os, random, string, re, sys
 from tqdm import tqdm
 
+import nltk
+
+nltk.download('wordnet')
+from nltk.corpus import wordnet as wn
+
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
@@ -10,8 +15,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.tokenize import word_tokenize
 
-from private_obfuscation.helpers_llms import use_chatgpt
+import pyterrier as pt
 from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR
+
+from private_obfuscation.helpers_llms import use_chatgpt
 
 
 # Function to reformulate queries by replacing random characters
@@ -37,7 +44,7 @@ def get_reformulator(reformulation_type, dataset_name='vaswani'):
     elif reformulation_type == "random_char":
         return random_reformulate_query
 
-    elif reformulation_type == 'chatgpt_improve':
+    elif reformulation_type == 'chatgpt_imp rove':
         return get_saved_llm_reformulations(dataset_name, 'improve')
 
     else:
@@ -208,7 +215,6 @@ def get_distance_reformulations(reformulations, distance_type='tfidfcosine'):
     return mean_distance
 
 
-
 def test():
     # reformulations = create_reformulations()
     dataset_name = 'vaswani'
@@ -231,6 +237,7 @@ def test():
     # use_chatgpt()
     # reformulation_distance()
 
+
 def test_small_example():
     sentence1 = 'find a nice restaurant close to Duomo'
     sentence2 = 'look for a good restaurant near Sforzesco'
@@ -251,7 +258,75 @@ def test_small_example():
     similarity = reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kwargs=kwargs)
     print('similarity tfidfcosine:', similarity)
 
-if __name__ == "__main__":
-    test()
-    # test_small_example()
 
+def test_rewrite():
+    sdm = pt.rewrite.SequentialDependence()
+
+
+def wordnet_reformulator(query):
+    words = query.split()
+    reformulated_query = []
+    for word in words:
+        synsets = wn.synsets(word)
+        if synsets:
+            reformulated_query.append(synsets[0].lemmas()[0].name())
+        else:
+            reformulated_query.append(word)
+    return ' '.join(reformulated_query)
+
+
+def wordnet_reformulator_2(query):
+    words = query.split()
+    reformulated_query = []
+    for word in words:
+        syns = wn.synonyms(word)
+        # flatten
+        syns = [syn for synset in syns for syn in synset]
+        random.shuffle(syns)
+        if syns:
+            reformulated_query.append(syns[0])
+        else:
+            reformulated_query.append(word)
+    return ' '.join(reformulated_query)
+
+
+def test_reformulators():
+    import nltk
+    nltk.download('stopwords')
+    nltk.download('punkt')
+
+    from nltk.corpus import stopwords
+    from nltk.stem import PorterStemmer
+    from private_obfuscation.helpers_llms import SimilarityBERT
+
+    kwargs = {}
+
+    kwargs['ps'] = PorterStemmer()
+    kwargs['stop_words'] = set(stopwords.words('english'))
+
+    queries = [
+        "I want to know about patient confidentiality",
+        "What are the symptoms of diabetes?",
+        "How to manage mental health issues"
+    ]
+
+    bert_similarity = SimilarityBERT()
+
+    for q in queries:
+        print('-' * 50)
+        wn_reformulation = wordnet_reformulator_2(q)
+        print('Original:', q)
+        print('Wordnet: ', wn_reformulation)
+        sem_similarity = bert_similarity.get_similarity([q, wn_reformulation])
+        assert sem_similarity.shape == (1, 1)
+        sem_similarity = sem_similarity[0][0]
+        sin_similarity = reformulation_distance(q, wn_reformulation, distance_type='inter', kwargs=kwargs)
+
+        print('Semantic Similarity:', sem_similarity, sem_similarity.shape)
+        print('Syntactic Similarity:', sin_similarity)
+
+
+if __name__ == "__main__":
+    # test()
+    # test_small_example()
+    test_reformulators()

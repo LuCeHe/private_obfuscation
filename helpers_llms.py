@@ -112,6 +112,24 @@ def use_huggingface(
     pairs = {question: answer for question, answer in zip(questions, answers)}
     return pairs
 
+
+class SimilarityBERT():
+
+    def __init__(self, model_id='bert-base-nli-mean-tokens'):
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # 'sentence-transformers/paraphrase-MiniLM-L6-v2'
+        from sentence_transformers import SentenceTransformer
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        self.cosine_similarity = cosine_similarity
+        self.model = SentenceTransformer(model_id, device=device)
+
+    def get_similarity(self, sentences):
+        sentence_embeddings = self.model.encode(sentences)
+        similarity_scores = self.cosine_similarity([sentence_embeddings[0]], sentence_embeddings[1:])
+        return similarity_scores
+
+
 if __name__ == '__main__':
     # use_huggingface()
     pass
