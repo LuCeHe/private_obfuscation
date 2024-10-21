@@ -280,6 +280,7 @@ def wordnet_reformulator_2(query):
     reformulated_query = []
     for word in words:
         syns = wn.synonyms(word)
+        # print('word:', word, 'syns:', syns)
         # flatten
         syns = [syn for synset in syns for syn in synset]
         random.shuffle(syns)
@@ -287,7 +288,21 @@ def wordnet_reformulator_2(query):
             reformulated_query.append(syns[0])
         else:
             reformulated_query.append(word)
-    return ' '.join(reformulated_query)
+    return ' '.join(reformulated_query).replace('_', ' ')
+
+
+def wordnet_reformulator_3(query):
+    # remove stop words
+    import nltk
+    nltk.download('stopwords')
+    from nltk.corpus import stopwords
+    stop_words = set(stopwords.words('english'))
+
+    # keep only alphanumeric
+    query = ''.join([c for c in query if c.isalpha() or c == ' '])
+
+    words = ' '.join([w for w in query.split() if not w.lower() in stop_words])
+    return wordnet_reformulator_2(words)
 
 
 def test_reformulators():
@@ -314,7 +329,7 @@ def test_reformulators():
 
     for q in queries:
         print('-' * 50)
-        wn_reformulation = wordnet_reformulator_2(q)
+        wn_reformulation = wordnet_reformulator_3(q)
         print('Original:', q)
         print('Wordnet: ', wn_reformulation)
         sem_similarity = bert_similarity.get_similarity([q, wn_reformulation])
