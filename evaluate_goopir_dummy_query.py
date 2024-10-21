@@ -7,8 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1LwFp_VYDfAgd_3F_IWLmGLv2zqL-UFue
 """
 
-# !pip install rank_bm25
-
 from __future__ import division
 from collections import Counter
 import operator
@@ -126,7 +124,7 @@ class goopir(object):
         }
 
 if __name__ == "__main__":
-    goopir_instance = goopir(5)
+    goopir_instance = goopir(2)
 
     #Sample Query
     queries = [

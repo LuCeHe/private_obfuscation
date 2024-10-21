@@ -136,5 +136,3 @@ if __name__ == '__main__':
     for original_query, similarity_scores in similarities.items():
         for fake_query, similarity in zip(fake_queries, similarity_scores):
             print(f"Original Query: '{original_query}', Fake Query: '{fake_query}', Similarity Score: {similarity:.4f}")
-
-!pip install sentence_transformers
