@@ -22,7 +22,8 @@ import pyterrier as pt
 
 # Initialize PyTerrier
 # if not pt.started():
-pt.init()
+# pt.init()
+pt.java.init()
 
 
 # import pyterrier
