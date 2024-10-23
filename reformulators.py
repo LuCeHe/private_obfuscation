@@ -423,12 +423,22 @@ def test_reformulators():
 
 
 def test_get_glove_vector():
+    import numpy as np
     gensim_name = 'glove-twitter-25'
     import gensim.downloader as api
     model = api.load(gensim_name)
 
     # get vector for car
-    print(model['car'])
+    gensim_vector = model['car']
+    print(gensim_vector)
+
+    # add noise to vector
+    noise = 0.1
+    noisy_vector = gensim_vector + noise * np.random.normal(size=gensim_vector.shape)
+
+    # get most similar word
+    similar_word = model.similar_by_vector(noisy_vector)
+    print(similar_word)
 
 
 if __name__ == "__main__":
