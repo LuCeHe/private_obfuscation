@@ -19,10 +19,6 @@ os.makedirs(EXPDIR, exist_ok=True)
 from private_obfuscation.reformulators import reformulate_queries
 
 import pyterrier as pt
-
-# Initialize PyTerrier
-# if not pt.started():
-# pt.init()
 pt.java.init()
 
 

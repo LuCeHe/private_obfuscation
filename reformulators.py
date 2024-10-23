@@ -422,7 +422,17 @@ def test_reformulators():
         # print('Syntactic Similarity:', sin_similarity)
 
 
+def test_get_glove_vector():
+    gensim_name = 'glove-twitter-25'
+    import gensim.downloader as api
+    model = api.load(gensim_name)
+
+    # get vector for car
+    print(model['car'])
+
+
 if __name__ == "__main__":
     # test()
     # test_small_example()
-    test_reformulators()
+    # test_reformulators()
+    test_get_glove_vector()
