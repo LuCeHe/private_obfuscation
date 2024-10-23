@@ -121,11 +121,11 @@ def get_retriever(dataset_name, retriever, index=None):
 
 
 bigger_ds = [
-    'irds:beir/msmarco/train', 'irds:beir/fever/dev', 'beir/msmarco/dev',
     'irds:beir/dbpedia-entity/dev', 'irds:beir/dbpedia-entity/test',
     'irds:msmarco-document/trec-dl-2019',
     'irds:msmarco-document/trec-dl-2020',
     'irds:msmarco-passage/eval',
+    'irds:beir/fever/dev', 'irds:beir/fever/test',
 ]
 nice_ds = [
     'irds:vaswani', 'irds:beir/arguana',

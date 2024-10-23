@@ -21,8 +21,8 @@ from private_obfuscation.reformulators import reformulate_queries
 import pyterrier as pt
 
 # Initialize PyTerrier
-if not pt.started():
-    pt.init()
+# if not pt.started():
+pt.init()
 
 from pyterrier.measures import *
 
@@ -44,7 +44,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reformulation", type=str, default="none", choices=reformulation_types)
     parser.add_argument("--retriever", type=str, default="bm25", choices=retrievers)
-    parser.add_argument("--dataset_name", type=str, default="irds:msmarco-document/trec-dl-2019")
+    parser.add_argument("--dataset_name", type=str, default="irds:vaswani")
     parser.add_argument("--notes", type=str, default="")
     args = parser.parse_args()
 
