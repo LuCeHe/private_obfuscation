@@ -24,7 +24,8 @@ import pyterrier as pt
 # if not pt.started():
 pt.init()
 
-from pyterrier.measures import *
+import pyterrier
+from pyterrier.measures import RR, nDCG, P, R, AP
 
 from private_obfuscation.retrievers import get_retriever, get_dataset
 
