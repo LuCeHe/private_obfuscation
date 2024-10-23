@@ -25,7 +25,9 @@ import pyterrier as pt
 pt.init()
 
 import pyterrier
-from pyterrier.measures import RR, nDCG, P, R, AP
+from pyterrier import measures
+RR, nDCG, P, R, AP = measures.RR, measures.nDCG, measures.P, measures.R, measures.AP
+# from pyterrier.measures import RR, nDCG, P, R, AP
 
 from private_obfuscation.retrievers import get_retriever, get_dataset
 
