@@ -24,9 +24,10 @@ import pyterrier as pt
 # if not pt.started():
 pt.init()
 
-import pyterrier
-from pyterrier import measures
-RR, nDCG, P, R, AP = measures.RR, measures.nDCG, measures.P, measures.R, measures.AP
+
+# import pyterrier
+# from pyterrier import measures
+RR, nDCG, P, R, AP = pt.measures.RR, pt.measures.nDCG, pt.measures.P, pt.measures.R, pt.measures.AP
 # from pyterrier.measures import RR, nDCG, P, R, AP
 
 from private_obfuscation.retrievers import get_retriever, get_dataset
