@@ -1,9 +1,12 @@
-
 import os
-import pyterrier as pt
 from sentence_transformers import SentenceTransformer
-import numpy as np
-from pyterrier_colbert.ranking import ColBERTFactory
+
+import pyterrier as pt
+
+# Initialize PyTerrier
+if not pt.started():
+    pt.init()
+
 import pyterrier_colbert.indexing
 import pyterrier_colbert as pycolbert
 import faiss
@@ -82,7 +85,7 @@ def get_colbert_e2e(dataset):
     return colbert_e2e
 
 
-def get_retriever(dataset_name, retriever):
+def get_retriever(dataset_name, retriever, index=None):
     """
     Returns the specified retriever for the given dataset.
 
@@ -90,133 +93,94 @@ def get_retriever(dataset_name, retriever):
     :param retriever: Retriever name.
     :return: PyTerrier retriever object.
     """
+    retrievers = []
     if retriever == "bm25":
-        if dataset_name == "vaswani":
-            # Initialize BM25 retriever using the dataset index
-            retriever =  pt.terrier.Retriever.from_dataset(dataset_name, "terrier_stemmed", wmodel="BM25")
-        elif 'trec' in dataset_name.lower():
-            # Initialize BM25 retriever using the dataset documents
-            documents = pt.get_dataset(dataset_name)
-            # retriever =  pt.BatchRetrieve(pt.get_dataset(dataset_name), wmodel="BM25")
-
-            indexer = pt.TRECCollectionIndexer("./index")
-            # this downloads the file msmarco-docs.trec.gz
-            indexref = indexer.index(documents.get_corpus())
-            index = pt.IndexFactory.of(indexref)
-
-            # DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
-            retriever = pt.terrier.Retriever(index, wmodel="BM25") % 100
-
-
-
+        DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
+        DPH = pt.terrier.Retriever(index, wmodel="DPH")
+        BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
+        BM25 = pt.terrier.Retriever(index, wmodel="BM25")
+        retrievers = [DPH_br, DPH, BM25_br, BM25]
 
     elif retriever == "faiss":
         raise NotImplementedError("FAISS retriever is not functional yet.")
 
-        # Initialize FAISS retriever using the dataset documents
-        documents = dataset.get_corpus()
-        retriever =  FaissRetriever(documents)
-
     elif retriever == "colbert":
         # Initialize ColBERT retriever using the dataset documents
-        retriever =  get_colbert_e2e(dataset_name)
+        colbert = get_colbert_e2e(dataset_name)
+
+        DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
+        DPH = pt.terrier.Retriever(index, wmodel="DPH")
+        BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
+        BM25 = pt.terrier.Retriever(index, wmodel="BM25")
+        retrievers = [DPH_br, DPH, BM25_br, BM25, colbert]
 
     else:
         raise ValueError(f"Invalid retriever: {retriever}")
 
-    return retriever
+    return retrievers
 
 
-def tests_with_webis():
-    # this code is functional
+bigger_ds = [
+    'irds:beir/msmarco/train', 'irds:beir/fever/dev', 'beir/msmarco/dev',
+    'irds:beir/dbpedia-entity/dev', 'irds:beir/dbpedia-entity/test',
+    'irds:msmarco-document/trec-dl-2019',
+    'irds:msmarco-document/trec-dl-2020',
+    'irds:msmarco-passage/eval',
+]
+nice_ds = [
+    'irds:vaswani', 'irds:beir/arguana',
+    'irds:beir/scifact/dev', 'irds:beir/scifact/test',
+    'irds:beir/webis-touche2020/v2',
+    'irds:beir/nfcorpus/dev', 'irds:beir/nfcorpus/test',
+    'irds:beir/trec-covid',
+    'irds:beir/nq',
+]
+nice_ds += bigger_ds
 
-    import pyterrier as pt
-    # dataset = pt.datasets.get_dataset('irds:cord19/trec-covid')
-    # indexer = pt.index.IterDictIndexer('./cord19-index')
-    # fields = ('title', 'abstract')
-    # topics = 'title'
-    dataset = pt.datasets.get_dataset('irds:beir/webis-touche2020/v2')
-    indexer = pt.index.IterDictIndexer('./webis-index', meta={'docno': 39})
+
+def get_dataset(dataset_name):
+    # unsure: irds:beir/quora/test
+    assert dataset_name in nice_ds, f"Dataset name must be one of {nice_ds}"
+    dataset_main_name = dataset_name.replace('irds:', '')
+    dataset_main_name = dataset_main_name.split('/')[1] if '/' in dataset_main_name else dataset_main_name
+    index_name = f"{dataset_main_name}-index"
+    index_path = os.path.join(DATADIR, index_name)
+
+    dataset = pt.datasets.get_dataset(dataset_name)
+    indexer = pt.index.IterDictIndexer(index_path, meta={'docno': 39}, verbose=True, overwrite=True)
     fields = ('text',)
-    topics = 'text'
+    topics_arg = 'text'
 
     indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
     index = pt.IndexFactory.of(indexref)
-    # indexer = pt.TRECCollectionIndexer("./index")
-    # indexref = indexer.index(dataset.get_corpus())
-    # index = pt.IndexFactory.of(indexref)
 
-    DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
-    BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
-    # this runs an experiment to obtain results on the TREC COVID queries and qrels
-    pt.Experiment(
-        [DPH_br, BM25_br],
-        dataset.get_topics(topics),
-        dataset.get_qrels(),
-        eval_metrics=["P.5", "P.10", "ndcg_cut.10", "map"])
-
-
-def tests_with_covid():
-    # this code is functional
-
-    import pyterrier as pt
-    # dataset = pt.datasets.get_dataset('irds:cord19/trec-covid')
-    # indexer = pt.index.IterDictIndexer('./cord19-index')
-    # fields = ('title', 'abstract')
-    # topics = 'title'
-    dataset = pt.datasets.get_dataset('irds:beir/trec-covid')
-    indexer = pt.index.IterDictIndexer('./covid-index', meta={'docno': 39})
-    fields = ('text',)
-    topics = 'text'
-
-    indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
-    index = pt.IndexFactory.of(indexref)
-    # indexer = pt.TRECCollectionIndexer("./index")
-    # indexref = indexer.index(dataset.get_corpus())
-    # index = pt.IndexFactory.of(indexref)
-
-    DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
-    BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
-    # this runs an experiment to obtain results on the TREC COVID queries and qrels
-    pt.Experiment(
-        [DPH_br, BM25_br],
-        dataset.get_topics(topics),
-        dataset.get_qrels(),
-        eval_metrics=["P.5", "P.10", "ndcg_cut.10", "map"])
+    topics = dataset.get_topics(topics_arg)
+    qrels = dataset.get_qrels()
+    return index, topics, qrels
 
 
 def tests_with_bair(dataset_name):
-    # unsure: irds:beir/quora/test
-    too_largs_ds = ['irds:beir/msmarco/train', 'irds:beir/fever/dev', 'beir/msmarco/dev']
-    nice_ds = [
-        'irds:beir/webis-touche2020/v2', 'irds:beir/trec-covid', 'irds:beir/scifact/train', 'irds:beir/nq',
-        'irds:beir/nfcorpus/train',
-    ]
-    assert dataset_name in nice_ds, f"Dataset name must be one of {nice_ds}"
-    index_name = f"{dataset_name.replace('irds:', '').split('/')[1]}-index"
-    index_path = os.path.join(DATADIR, index_name)
-
-    import pyterrier as pt
-    # dataset = pt.datasets.get_dataset('irds:cord19/trec-covid')
-    # indexer = pt.index.IterDictIndexer('./cord19-index')
-    # fields = ('title', 'abstract')
-    # topics = 'title'
-    dataset = pt.datasets.get_dataset(dataset_name)
-    indexer = pt.index.IterDictIndexer(index_path, meta={'docno': 39})
-    fields = ('text',)
-    topics = 'text'
-
-    indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
-    index = pt.IndexFactory.of(indexref)
-    # indexer = pt.TRECCollectionIndexer("./index")
-    # indexref = indexer.index(dataset.get_corpus())
-    # index = pt.IndexFactory.of(indexref)
+    index, topics, qrels = get_dataset(dataset_name)
+    print(topics.head())
 
     DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
     BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
+    BM25 = pt.terrier.Retriever(index, wmodel="BM25")
     # this runs an experiment to obtain results on the TREC COVID queries and qrels
-    pt.Experiment(
-        [DPH_br, BM25_br],
-        dataset.get_topics(topics),
-        dataset.get_qrels(),
+    experiment = pt.Experiment(
+        [DPH_br, BM25_br, BM25],
+        topics,
+        qrels,
         eval_metrics=["P.5", "P.10", "ndcg_cut.10", "map"])
+    print(experiment.to_string())
+
+
+if __name__ == '__main__':
+    # tests_with_webis()
+    # tests_with_covid()
+    tests_with_bair('irds:beir/dbpedia-entity/dev')
+    # tests_with_bair('irds:beir/trec-covid')
+    # tests_with_bair('irds:beir/scifact/dev')
+    # tests_with_bair('irds:beir/nq')
+    # tests_with_bair('irds:beir/nfcorpus/dev')
+    pass

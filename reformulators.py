@@ -3,8 +3,17 @@ from tqdm import tqdm
 
 import nltk
 
+nltk.download('stopwords')
 nltk.download('wordnet')
+nltk.download('punkt')
+
 from nltk.corpus import wordnet as wn
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
+from nltk.stem import PorterStemmer
+
+stop_words = set(stopwords.words('english'))
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
@@ -13,7 +22,6 @@ sys.path.append(WORKDIR)
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from nltk.tokenize import word_tokenize
 
 import pyterrier as pt
 from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR
@@ -167,17 +175,14 @@ def reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kw
     elif distance_type == 'inter':
         ps = kwargs['ps']
         stop_words = kwargs['stop_words']
+
         # stemmatize and remove stopwords
         set1 = simplify_sentence(sentence1, ps, stop_words)
         set2 = simplify_sentence(sentence2, ps, stop_words)
 
-        # print('set1:', set1)
-        # print('set2:', set2)
-
         z = set1.intersection(set2)
 
         similarity_score = len(z) / min(len(set1), len(set2))
-        # print('similarity_score', similarity_score)
 
     else:
         raise ValueError(f"Invalid distance type: {distance_type}")
@@ -191,17 +196,8 @@ def get_distance_reformulations(reformulations, distance_type='tfidfcosine'):
     print('\nCalculating reformulation distances...')
     kwargs = {}
     if distance_type == 'inter':
-        import nltk
-        nltk.download('stopwords')
-        nltk.download('punkt')
-
-        from nltk.corpus import stopwords
-        from nltk.tokenize import word_tokenize
-
-        from nltk.stem import PorterStemmer
-
         kwargs['ps'] = PorterStemmer()
-        kwargs['stop_words'] = set(stopwords.words('english'))
+        kwargs['stop_words'] = stop_words
 
     for query, reformulated_query in tqdm(reformulations.items()):
         distance = reformulation_distance(query, reformulated_query, distance_type, kwargs=kwargs)
@@ -243,24 +239,13 @@ def test_small_example():
     sentence2 = 'look for a good restaurant near Sforzesco'
 
     kwargs = {}
-    import nltk
-    nltk.download('stopwords')
-    nltk.download('punkt')
-
-    from nltk.corpus import stopwords
-
-    from nltk.stem import PorterStemmer
 
     kwargs['ps'] = PorterStemmer()
-    kwargs['stop_words'] = set(stopwords.words('english'))
+    kwargs['stop_words'] = stop_words
     similarity = reformulation_distance(sentence1, sentence2, distance_type='inter', kwargs=kwargs)
     print('similarity inter:', similarity)
     similarity = reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kwargs=kwargs)
     print('similarity tfidfcosine:', similarity)
-
-
-def test_rewrite():
-    sdm = pt.rewrite.SequentialDependence()
 
 
 def wordnet_reformulator(query):
@@ -280,7 +265,7 @@ def wordnet_reformulator_2(query):
     reformulated_query = []
     for word in words:
         syns = wn.synonyms(word)
-        # print('word:', word, 'syns:', syns)
+
         # flatten
         syns = [syn for synset in syns for syn in synset]
         random.shuffle(syns)
@@ -292,12 +277,6 @@ def wordnet_reformulator_2(query):
 
 
 def wordnet_reformulator_3(query):
-    # remove stop words
-    import nltk
-    nltk.download('stopwords')
-    from nltk.corpus import stopwords
-    stop_words = set(stopwords.words('english'))
-
     # keep only alphanumeric
     query = ''.join([c for c in query if c.isalpha() or c == ' '])
 
@@ -305,19 +284,93 @@ def wordnet_reformulator_3(query):
     return wordnet_reformulator_2(words)
 
 
-def test_reformulators():
-    import nltk
-    nltk.download('stopwords')
-    nltk.download('punkt')
+gensim_available = [
+    'fasttext-wiki-news-subwords-300',
+    'conceptnet-numberbatch-17-06-300',
+    'word2vec-ruscorpora-300',
+    'word2vec-google-news-300',
+    'glove-wiki-gigaword-50',
+    'glove-wiki-gigaword-100',
+    'glove-wiki-gigaword-200',
+    'glove-wiki-gigaword-300',
+    'glove-twitter-25',
+    'glove-twitter-50',
+    'glove-twitter-100',
+    'glove-twitter-200',
+    '__testing_word2vec-matrix-synopsis'
+]
 
-    from nltk.corpus import stopwords
-    from nltk.stem import PorterStemmer
+
+def character_similarity(string_1, string_2):
+    set_1 = set(string_1.lower())
+    set_2 = set(string_2.lower())
+    intersection = set_1.intersection(set_2)
+    char_sim = len(intersection) / (min(len(set_1), len(set_2)))
+    return char_sim
+
+
+class GensimPretrained():
+    # https://radimrehurek.com/gensim/models/word2vec.html
+    def __init__(self, gensim_name=None):
+        if gensim_name in gensim_available:
+            import gensim.downloader as api
+            self.model = api.load(gensim_name)
+        else:
+            self.model = None
+
+    def get_similarity(self, sentences, model=None):
+        if model is None:
+            model = self.model
+        return model.n_similarity(sentences[0].split(), sentences[1].split())
+
+    def get_random_similar(self, word, model=None):
+        if model is None:
+            model = self.model
+        try:
+            similar_words = model.most_similar(word)
+            # print(similar_words)
+            similar_words = [w for w in similar_words if w[1] > 0.53 and character_similarity(word, w[0]) < .8]
+            # print(similar_words)
+            similar_word = random.choice(similar_words)[0].lower()
+            # print(similar_word)
+        except Exception as e:
+            print(e)
+            similar_word = ''
+        return similar_word
+
+    def get_gensim_reformulator(self, gensim_name=None):
+        if isinstance(gensim_name, str):
+            import gensim.downloader as api
+            model = api.load(gensim_name)
+        else:
+            model = self.model
+
+        def reformulator(query):
+            query = ''.join([c for c in query if c.isalpha() or c == ' '])
+            words = [w.lower() for w in query.split() if not w.lower() in stop_words]
+
+            new_query = ' '.join([self.get_random_similar(w, model=model) for w in words]).replace('_', ' ')
+
+            # remove extra spaces
+            new_query = ' '.join(new_query.split())
+
+            return new_query
+
+        return reformulator
+
+
+def wordnet_query_expansion(query):
+    expansion = wordnet_reformulator_3(query)
+    return f'{query} {expansion}'
+
+
+def test_reformulators():
     from private_obfuscation.helpers_llms import SimilarityBERT
 
     kwargs = {}
 
     kwargs['ps'] = PorterStemmer()
-    kwargs['stop_words'] = set(stopwords.words('english'))
+    kwargs['stop_words'] = stop_words
 
     queries = [
         "I want to know about patient confidentiality",
@@ -327,18 +380,46 @@ def test_reformulators():
 
     bert_similarity = SimilarityBERT()
 
+    print('Loading reformulators...')
+    gp = GensimPretrained()
+    reformulators = {
+        'wordnet': wordnet_reformulator_3,
+        'googlenews': gp.get_gensim_reformulator('word2vec-google-news-300'),
+        'glovewiki': gp.get_gensim_reformulator('glove-wiki-gigaword-300'),
+        # 'conceptnet': GensimPretrained().get_gensim_reformulator('conceptnet-numberbatch-17-06-300'),
+        'glovetwitter': gp.get_gensim_reformulator('glove-twitter-200'),
+    }
+
+    print('Testing reformulators...')
     for q in queries:
         print('-' * 50)
-        wn_reformulation = wordnet_reformulator_3(q)
+        # wn_reformulation = wordnet_reformulator_3(q)
         print('Original:', q)
-        print('Wordnet: ', wn_reformulation)
-        sem_similarity = bert_similarity.get_similarity([q, wn_reformulation])
-        assert sem_similarity.shape == (1, 1)
-        sem_similarity = sem_similarity[0][0]
-        sin_similarity = reformulation_distance(q, wn_reformulation, distance_type='inter', kwargs=kwargs)
 
-        print('Semantic Similarity:', sem_similarity, sem_similarity.shape)
-        print('Syntactic Similarity:', sin_similarity)
+        for k in reformulators:
+            print(f'   {k}')
+            try:
+                reformulator = reformulators[k]
+                reformulation = reformulator(q)
+                print(f'     ', reformulation)
+                sem_similarity = bert_similarity.get_similarity([q, reformulation])
+                assert sem_similarity.shape == (1, 1)
+                sem_similarity = sem_similarity[0][0]
+                sin_similarity = reformulation_distance(q, reformulation, distance_type='inter', kwargs=kwargs)
+
+                print('   Semantic Similarity: ', sem_similarity, sem_similarity.shape)
+                print('   Syntactic Similarity:', sin_similarity)
+            except Exception as e:
+                print(f'   {k}: Error:', e)
+
+        # print('Wordnet: ', wn_reformulation)
+        # sem_similarity = bert_similarity.get_similarity([q, wn_reformulation])
+        # assert sem_similarity.shape == (1, 1)
+        # sem_similarity = sem_similarity[0][0]
+        # sin_similarity = reformulation_distance(q, wn_reformulation, distance_type='inter', kwargs=kwargs)
+
+        # print('Semantic Similarity:', sem_similarity, sem_similarity.shape)
+        # print('Syntactic Similarity:', sin_similarity)
 
 
 if __name__ == "__main__":
