@@ -3,6 +3,8 @@ from sentence_transformers import SentenceTransformer
 
 import pyterrier as pt
 
+pt.init()
+
 import pyterrier_colbert.indexing
 import pyterrier_colbert as pycolbert
 # import faiss
