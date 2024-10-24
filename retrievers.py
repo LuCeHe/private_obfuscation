@@ -3,13 +3,9 @@ from sentence_transformers import SentenceTransformer
 
 import pyterrier as pt
 
-# Initialize PyTerrier
-if not pt.started():
-    pt.init()
-
-import pyterrier_colbert.indexing
-import pyterrier_colbert as pycolbert
-import faiss
+# import pyterrier_colbert.indexing
+# import pyterrier_colbert as pycolbert
+# import faiss
 
 from private_obfuscation.paths import DATADIR
 
