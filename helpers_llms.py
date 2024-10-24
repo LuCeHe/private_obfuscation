@@ -9,7 +9,7 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.paths import WORKDIR, DATADIR
+from private_obfuscation.paths import WORKDIR, DATADIR, PODATADIR
 
 hf_model_ids = {
     'mamba': 'state-spaces/mamba-130m-hf',
@@ -23,10 +23,31 @@ hf_model_ids = {
     'internlm': 'internlm/internlm2_5-7b-chat',
 }
 
+chatgpt_models = [
+    'gpt-3.5-turbo',
+]
+
+refs_types = {
+    "improve": "You are an expert in Information Retrieval. Reword the query into a very effective version.",
+    "prompt1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query.",
+    "prompt2": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query by applying the concept of generalization.",
+    "prompt3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query by applying the concept of differential privacy.",
+    "promptM1k1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 1 dummy, random queries, given this query.",
+    "promptM1k3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 3 dummy, random queries, given this query.",
+    "promptM1k5": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 5 dummy, random queries, given this query.",
+    "promptM2k1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 1 dummy queries, which are semantically related to this query.",
+    "promptM2k3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 3 dummy queries, which are semantically related to this query.",
+    "promptM2k5": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 5 dummy queries, which are semantically related to this query.",
+    "promptM3k1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 1 dummy queries, which generalize this query.",
+    "promptM3k3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 3 dummy queries, which generalize this query.",
+    "promptM3k5": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 5 dummy queries, which generalize this query.",
+}
+
 
 def use_chatgpt(
         personality="You are a helpful assistant that translates English to French. Translate the user sentence.",
         questions=["What is the capital of France?", "What is the capital of Germany?"],
+        api_model='gpt-3.5-turbo',
 ):
     os.path.join(WORKDIR, 'all_stuff.py', )
 
@@ -36,7 +57,6 @@ def use_chatgpt(
 
     from langchain_openai import ChatOpenAI
 
-    api_model = 'gpt-3.5-turbo'
     llm = ChatOpenAI(
         model=api_model,
         temperature=0,
@@ -130,6 +150,77 @@ class SimilarityBERT():
         return similarity_scores
 
 
+def chatgpt_reformulator(queries, reformulation_type, api_model='gpt-3.5-turbo'):
+    if reformulation_type in refs_types:
+        reformulations = use_chatgpt(
+            personality=refs_types[reformulation_type],
+            questions=queries,
+            api_model=api_model,
+        )
+    else:
+        raise ValueError("Invalid reformulation type.")
+
+    return reformulations
+
+
+def create_reformulations(dataset_name='vaswani', reformulation_type='improve', model='gpt-3.5-turbo'):
+    # PyTerrier attempt
+    import pyterrier as pt
+
+    # Initialize PyTerrier
+    if not pt.started():
+        pt.init()
+
+    dataset_name_ = dataset_name.replace(':', '-').replace('/', '-')
+    model_name_ = model.replace('/', '-').replace('.', 'p')
+
+    path = os.path.join(PODATADIR, f"reformulations_{model_name_}_{dataset_name_}_{reformulation_type}.txt")
+
+    assert model in chatgpt_models, f"Model must be one of {chatgpt_models} for now"
+    llm_reformulator = chatgpt_reformulator if model in chatgpt_models else \
+        use_huggingface if model in hf_model_ids else None
+
+    reformulations = None
+    if not os.path.exists(path):
+        # Load a dataset (use any small available dataset)
+        dataset = pt.get_dataset(dataset_name)
+
+        # Get the original topics (queries) from the dataset
+        topics = dataset.get_topics('text')
+
+        print('len queries:', len(topics['query']))
+
+        # Reformulate the queries
+        topics["original_query"] = topics["query"]
+        queries = [row['query'] for index, row in topics.iterrows()]
+        reformulations = llm_reformulator(queries, reformulation_type)
+
+        with open(path, 'w') as f:
+            f.write(str(reformulations))
+
+    else:
+        with open(path, 'r') as f:
+            reformulations = eval(f.read())
+
+    return reformulations
+
+
 if __name__ == '__main__':
-    # use_huggingface()
-    pass
+    ds = [
+        # 'irds:vaswani',
+        'irds:beir/scifact/test',
+        # 'irds:beir/nfcorpus/test',
+        # 'irds:beir/trec-covid',
+        # 'irds:beir/arguana',
+        # 'irds:beir/webis-touche2020/v2',
+    ]
+    # reformulation_type = 'prompt1'
+    model = 'gpt-3.5-turbo'
+    model = 'mamba'
+
+    # for rt in ['prompt1', 'prompt2', 'prompt3', 'promptM1k1', 'promptM1k3', 'promptM1k5', 'promptM2k1', 'promptM2k3', 'promptM2k5', 'promptM3k1', 'promptM3k3', 'promptM3k5']:
+    for rt in ['prompt1']:
+        for d in ds:
+            print('-' * 50)
+            print(d)
+            create_reformulations(dataset_name=d, reformulation_type=rt, model=model)

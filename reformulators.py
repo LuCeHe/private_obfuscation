@@ -1,13 +1,35 @@
 import os, random, string, re, sys
 from tqdm import tqdm
 
+
+CDIR = os.path.dirname(os.path.realpath(__file__))
+WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
+
+sys.path.append(WORKDIR)
+
+from private_obfuscation.paths import DATADIR
+
 import nltk
 
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('universal_tagset')
+nltk_data_path = os.path.join(DATADIR, 'nltk_data')
+os.makedirs(nltk_data_path, exist_ok=True)
+nltk.data.path.append(nltk_data_path)
+
+for d in ['stopwords', 'wordnet', 'punkt', 'averaged_perceptron_tagger', 'universal_tagset']:
+    try:
+        pre_folder = ''
+        post_folder = '' if not d == 'wordnet' else '.zip'
+        if d == 'stopwords' or d == 'wordnet':
+            pre_folder = 'corpora/'
+        elif d == 'punkt':
+            pre_folder = 'tokenizers/'
+        elif d == 'averaged_perceptron_tagger' or d == 'universal_tagset':
+            pre_folder = 'taggers/'
+        nltk.data.find(pre_folder + d + post_folder)
+        print(f"{d} tokenizer is already installed.")
+    except LookupError:
+        print(f"{d} tokenizer not found. Downloading...")
+        nltk.download(d, download_dir=nltk_data_path)
 
 from nltk.corpus import wordnet as wn
 from nltk.corpus import stopwords
@@ -27,7 +49,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 import pyterrier as pt
-from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR
+from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR, DATADIR
 
 from private_obfuscation.helpers_llms import use_chatgpt
 
@@ -60,54 +82,6 @@ def get_reformulator(reformulation_type, dataset_name='vaswani'):
 
     else:
         raise ValueError("Invalid reformulation type.")
-
-
-def chatgpt_reformulator(queries, reformulation_type):
-    if 'improve' in reformulation_type:
-        reformulations = use_chatgpt(
-            personality="You are an expert in Information Retrieval. Reword the query into a very effective version.",
-            questions=queries
-        )
-    else:
-        raise ValueError("Invalid reformulation type.")
-
-    return reformulations
-
-
-def create_reformulations():
-    # PyTerrier attempt
-    import pyterrier as pt
-
-    # Initialize PyTerrier
-    if not pt.started():
-        pt.init()
-
-    dataset_name = 'vaswani'
-    reformulation_type = 'improve'
-
-    path = os.path.join(PODATADIR, f"reformulations_{dataset_name}_{reformulation_type}.txt")
-
-    if not os.path.exists(path):
-        # Load a dataset (use any small available dataset)
-        dataset = pt.get_dataset(dataset_name)
-
-        # Get the original topics (queries) from the dataset
-        topics = dataset.get_topics()
-
-        # Reformulate the queries
-        topics["original_query"] = topics["query"]
-
-        queries = [row['query'] for index, row in topics.iterrows()]
-        reformulations = chatgpt_reformulator(queries, reformulation_type)
-
-        with open(path, 'w') as f:
-            f.write(str(reformulations))
-
-    else:
-        with open(path, 'r') as f:
-            reformulations = eval(f.read())
-
-    return reformulations
 
 
 def get_saved_llm_reformulations(dataset_name, reformulation_type, return_reformulations=False):
@@ -472,3 +446,5 @@ if __name__ == "__main__":
     # test_reformulators()
     # test_get_glove_vector()
     word_net_generalize()
+    # create_reformulations()
+    pass
