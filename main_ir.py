@@ -19,7 +19,7 @@ os.makedirs(EXPDIR, exist_ok=True)
 from private_obfuscation.reformulators import reformulate_queries
 
 import pyterrier as pt
-pt.java.init()
+# pt.java.init()
 
 
 # import pyterrier
@@ -80,7 +80,6 @@ def main(args):
     # show output experiments
     print(experiment.to_string())
 
-    print(type(experiment))
     # experiment to json
     experiment_json = experiment.to_dict()
     results.update(experiment_json)

@@ -6,10 +6,13 @@ import nltk
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('universal_tagset')
 
 from nltk.corpus import wordnet as wn
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from nltk.tag import pos_tag
 
 from nltk.stem import PorterStemmer
 
@@ -181,7 +184,6 @@ def reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kw
         set2 = simplify_sentence(sentence2, ps, stop_words)
 
         z = set1.intersection(set2)
-
         similarity_score = len(z) / min(len(set1), len(set2))
 
     else:
@@ -328,11 +330,8 @@ class GensimPretrained():
             model = self.model
         try:
             similar_words = model.most_similar(word)
-            # print(similar_words)
             similar_words = [w for w in similar_words if w[1] > 0.53 and character_similarity(word, w[0]) < .8]
-            # print(similar_words)
             similar_word = random.choice(similar_words)[0].lower()
-            # print(similar_word)
         except Exception as e:
             print(e)
             similar_word = ''
@@ -422,6 +421,10 @@ def test_reformulators():
         # print('Syntactic Similarity:', sin_similarity)
 
 
+class GloveDPreformulator():
+    pass
+
+
 def test_get_glove_vector():
     import numpy as np
     gensim_name = 'glove-twitter-25'
@@ -441,8 +444,31 @@ def test_get_glove_vector():
     print(similar_word)
 
 
+def word_net_generalize(sentence='nice cat'):
+    words = sentence.split()
+
+    pos = pos_tag(word_tokenize(sentence), tagset='universal')
+    print(pos)
+
+    for word in words:
+        print('-' * 50)
+        syns = wn.synsets(word)
+        print(syns)
+
+    for w, p in pos:
+        print('-' * 50)
+        print(w, p)
+        syns = wn.synsets(w, pos=p[0].lower())
+        print(syns)
+        hypernims = [h.lemmas() for syn in syns for h in syn.hypernyms()]
+        holonyms = [h.lemmas() for syn in syns for h in syn.member_holonyms()]
+        print('hypernims', hypernims)
+        print('holonyms', holonyms)
+
+
 if __name__ == "__main__":
     # test()
     # test_small_example()
     # test_reformulators()
-    test_get_glove_vector()
+    # test_get_glove_vector()
+    word_net_generalize()
