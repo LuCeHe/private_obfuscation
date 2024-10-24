@@ -3,15 +3,11 @@ from sentence_transformers import SentenceTransformer
 
 import pyterrier as pt
 
-# import pyterrier_colbert.indexing
-# import pyterrier_colbert as pycolbert
+import pyterrier_colbert.indexing
+import pyterrier_colbert as pycolbert
 # import faiss
 
 from private_obfuscation.paths import DATADIR
-
-# Ensure PyTerrier is started
-if not pt.started():
-    pt.init()
 
 
 class FaissRetriever(pt.Transformer):
