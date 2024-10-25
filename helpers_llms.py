@@ -83,6 +83,8 @@ def use_chatgpt(
 
 def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
     path = os.path.join(DATADIR, model_id.replace('/', '-'))
+    print('path:', path)
+    print('   does exist?', os.path.exists(path))
     if not os.path.exists(path):
         print('Downloading model')
         tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True, truncation_side='left',
@@ -157,6 +159,7 @@ def queries_to_reformulations(queries, reformulation_type, model_name='gpt-3.5-t
             questions=queries,
             api_model=model_name,
         )
+
     elif reformulation_type in refs_types and model_name in hf_model_ids:
         reformulations = use_huggingface(
             personality=refs_types[reformulation_type],
@@ -222,13 +225,15 @@ def create_reformulations(dataset_name='vaswani', reformulation_type='improve', 
 
 
 if __name__ == '__main__':
-    import argparse
+    import argparse, json
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", type=str, default="irds:beir/scifact/test")
     parser.add_argument("--reformulation_type", type=str, default="prompt1")
     parser.add_argument("--model_name", type=str, default="falconmamba")
     args = parser.parse_args()
+
+    print(json.dumps(args.__dict__, indent=2))
 
     ds = [
         # 'irds:vaswani',
