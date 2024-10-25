@@ -11,12 +11,15 @@ import numpy as np
 import pandas as pd
 import numpy.random as npr
 from scipy.linalg import sqrtm
-from sklearn.metrics import jaccard_score
 import os
 import matplotlib.pyplot as plt
 from sentence_transformers import SentenceTransformer, util
-from google.colab import drive
-drive.mount('/content/drive')
+
+
+def euclidean_distance_matrix(x, y):
+    x_expanded = x[:, np.newaxis, :]
+    y_expanded = y[np.newaxis, :, :]
+    return np.sqrt(np.sum((x_expanded - y_expanded) ** 2, axis=2))
 
 
 class AbstractMechanism:
@@ -35,6 +38,7 @@ class AbstractMechanism:
             noisy_embeddings.append(e + noise)
         return np.array(noisy_embeddings)
 
+
 # CMP Mechanism class
 class CMPMechanism(AbstractMechanism):
     def __init__(self, m, epsilon=50, **kwargs):
@@ -46,6 +50,7 @@ class CMPMechanism(AbstractMechanism):
         Y = npr.gamma(self.m, 1 / self.epsilon)
         Z = Y * X
         return Z
+
 
 # MM class
 class MahalanobisMechanism(AbstractMechanism):
@@ -67,6 +72,7 @@ class MahalanobisMechanism(AbstractMechanism):
         Z = X * Y
         return Z
 
+
 # VKM class
 class VickreyMechanism(MahalanobisMechanism):
     def __init__(self, m, epsilon=50, **kwargs):
@@ -79,23 +85,21 @@ class VickreyMechanism(MahalanobisMechanism):
         for e in embeddings:
             noisy_embeddings.append(e + self.noise_sampling())
 
-        def euclidean_distance_matrix(x, y):
-            x_expanded = x[:, np.newaxis, :]
-            y_expanded = y[np.newaxis, :, :]
-            return np.sqrt(np.sum((x_expanded - y_expanded) ** 2, axis=2))
-
         noisy_embeddings = np.array(noisy_embeddings)
         distance = euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
 
         closest = np.argpartition(distance, 2, axis=1)[:, :2]
         dist_to_closest = distance[np.tile(np.arange(n_words).reshape(-1, 1), 2), closest]
 
-        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
+        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (
+                self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
 
         vickrey_choice = np.array([npr.choice(2, p=[p[w], 1 - p[w]]) for w in range(n_words)])
         noisy_embeddings = self.emb_matrix[closest[np.arange(n_words), vickrey_choice]]
 
         return noisy_embeddings
+
+
 # VKMM class
 class VickreyMMechanism(MahalanobisMechanism):
     def __init__(self, m, epsilon=50, **kwargs):
@@ -108,25 +112,22 @@ class VickreyMMechanism(MahalanobisMechanism):
         for e in embeddings:
             noisy_embeddings.append(e + self.noise_sampling())
 
-        def euclidean_distance_matrix(x, y):
-            x_expanded = x[:, np.newaxis, :]
-            y_expanded = y[np.newaxis, :, :]
-            return np.sqrt(np.sum((x_expanded - y_expanded) ** 2, axis=2))
-
         noisy_embeddings = np.array(noisy_embeddings)
         distance = euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
 
         closest = np.argpartition(distance, 2, axis=1)[:, :2]
         dist_to_closest = distance[np.tile(np.arange(n_words).reshape(-1, 1), 2), closest]
 
-        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
+        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (
+                self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
 
         vickrey_choice = np.array([npr.choice(2, p=[p[w], 1 - p[w]]) for w in range(n_words)])
         noisy_embeddings = self.emb_matrix[closest[np.arange(n_words), vickrey_choice]]
 
         return noisy_embeddings
 
-#VKCM class
+
+# VKCM class
 class VickreyCMPMechanism(MahalanobisMechanism):
     def __init__(self, m, epsilon=50, embeddings=None, lam=0.75, **kwargs):
         super().__init__(m, epsilon, embeddings=embeddings, lam=lam, **kwargs)
@@ -141,34 +142,31 @@ class VickreyCMPMechanism(MahalanobisMechanism):
             noisy_embeddings.append(e + noise)
         noisy_embeddings = np.array(noisy_embeddings)
 
-        distance = self.euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
+        distance = euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
         closest = np.argpartition(distance, 2, axis=1)[:, :2]
         dist_to_closest = distance[np.tile(np.arange(n_words).reshape(-1, 1), 2), closest]
 
-        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
+        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (
+                self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
 
         vickrey_choice = np.array([npr.choice(2, p=[p[w], 1 - p[w]]) for w in range(n_words)])
         noisy_embeddings = self.emb_matrix[closest[np.arange(n_words), vickrey_choice]]
 
         return noisy_embeddings
 
-    def euclidean_distance_matrix(self, x, y):
-        x_expanded = x[:, np.newaxis, :]
-        y_expanded = y[np.newaxis, :, :]
-        return np.sqrt(np.sum((x_expanded - y_expanded) ** 2, axis=2))
 
-#synthetic data generation based on embedding matrix
-def generate_synthetic_data(n_samples, embedding_dim):
-    embeddings = npr.randn(n_samples, embedding_dim)
-    df = pd.DataFrame(embeddings, columns=[f"dim_{i}" for i in range(embedding_dim)])
-    return df
+# synthetic data generation based on embedding matrix
+# def generate_synthetic_data(n_samples, embedding_dim):
+#     embeddings = npr.randn(n_samples, embedding_dim)
+#     df = pd.DataFrame(embeddings, columns=[f"dim_{i}" for i in range(embedding_dim)])
+#     return df
 
-#Query simulation function
+
+# Query simulation function
 def simulate_queries(n_queries, embedding_dim):
     queries = npr.randn(n_queries, embedding_dim)
     query_df = pd.DataFrame(queries, columns=[f"dim_{i}" for i in range(embedding_dim)])
     return query_df
-
 
 
 def visualize_embeddings(original, protected_cmp, protected_mah, protected_vickrey):
@@ -183,7 +181,7 @@ def visualize_embeddings(original, protected_cmp, protected_mah, protected_vickr
     plt.grid(True)
     plt.legend()
 
-    #CMP protection
+    # CMP protection
     plt.subplot(2, 2, 2)
     plt.scatter(protected_cmp[:, 0], protected_cmp[:, 1], alpha=0.5, c='red', label='Protected CMP')
     plt.title('Protected Embeddings (CMP)')
@@ -192,7 +190,7 @@ def visualize_embeddings(original, protected_cmp, protected_mah, protected_vickr
     plt.grid(True)
     plt.legend()
 
-    #Mahalanobis protection embeddings
+    # Mahalanobis protection embeddings
     plt.subplot(2, 2, 3)
     plt.scatter(protected_mah[:, 0], protected_mah[:, 1], alpha=0.5, c='green', label='Protected Mahalanobis')
     plt.title('Protected Embeddings (Mahalanobis)')
@@ -201,8 +199,8 @@ def visualize_embeddings(original, protected_cmp, protected_mah, protected_vickr
     plt.grid(True)
     plt.legend()
 
-    #plt.tight_layout()
-    #plt.show()
+    # plt.tight_layout()
+    # plt.show()
 
     # Vickrey protection embeddings
     plt.subplot(2, 2, 4)
@@ -217,10 +215,70 @@ def visualize_embeddings(original, protected_cmp, protected_mah, protected_vickr
     plt.show()
 
 
-if __name__ == "__main__":
-    n_samples = 10
-    embedding_dim = 300
+def load_glove_embeddings(gensim_name='glove-twitter-25'):
+    import gensim.downloader as api
+    embeddings_dict = api.load(gensim_name)
 
+    return embeddings_dict
+
+
+def find_closest_words(embedding, top_n=10):
+    """Finds the closest words to a given embedding in the GloVe vocabulary."""
+    distances = {
+        word: np.linalg.norm(embedding - glove_embeddings[word])
+        for word in glove_embeddings
+    }
+    closest_words = sorted(distances, key=distances.get)[:top_n]
+    return closest_words
+
+
+def obfuscate_text(text, mechanism, glove_embeddings):
+    embedding_dim = glove_embeddings.vector_size
+    """Obfuscates text on a per-word basis using the given DP mechanism."""
+    words = text.lower().split()
+
+    embeddings = [glove_embeddings.get(word, np.zeros(embedding_dim)) for word in words]
+
+    if not embeddings:
+        return ""
+
+    embeddings = np.array(embeddings)
+
+    protected_embeddings = mechanism.get_protected_vectors(embeddings)
+    print('protected_embeddings.shape', protected_embeddings.shape)
+
+    obfuscated_words = [find_closest_words(emb, top_n=1)[0] for emb in protected_embeddings]
+    return " ".join(obfuscated_words)
+
+
+def calculate_similarities(original_query, obfuscated_query):
+    """Calculates Jaccard and sentence similarities."""
+    jaccard_similarities = []
+    sentence_similarities = []
+
+    original_words = set(original_query.lower().split())
+    obfuscated_words = set(obfuscated_query.lower().split())
+
+    if original_words and obfuscated_words:
+        jaccard_sim = len(original_words.intersection(obfuscated_words)) / len(original_words.union(obfuscated_words))
+        jaccard_similarities.append(jaccard_sim)
+
+    else:
+        jaccard_similarities.append(np.nan)
+
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedding1 = model.encode(original_query, convert_to_tensor=True)
+    embedding2 = model.encode(obfuscated_query, convert_to_tensor=True)
+    cosine_similarity_value = util.cos_sim(embedding1, embedding2).item()
+    sentence_similarities.append(cosine_similarity_value)
+
+    return jaccard_similarities, sentence_similarities
+
+
+if __name__ == "__main__":
+
+    glove_embeddings = load_glove_embeddings()
+    embedding_dim = glove_embeddings.vector_size
 
     queries = [
         "What is the prognosis for endocarditis?",
@@ -230,128 +288,23 @@ if __name__ == "__main__":
         "Is there a cure for Alzheimer's disease?"
     ]
 
-    embeddings_df = generate_synthetic_data(n_samples, embedding_dim)
-    embeddings = embeddings_df.to_numpy()
+    glove_matrix = np.array([glove_embeddings[word] for word in glove_embeddings.index_to_key])
 
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    epsilon = 50
+    mechs = {
+        "CMP": CMPMechanism(m=embedding_dim, epsilon=epsilon),
+        "Mahalanobis": MahalanobisMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix),
+        "Vickrey": VickreyMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix),
+        "VickreyM": VickreyMMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix),
+        "VickreyCMP": VickreyCMPMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix)
+    }
 
-    query_embeddings = model.encode(queries, convert_to_tensor=True).cpu().numpy()
+    for i, original_query in enumerate(queries):
+        print(f"\nOriginal Query {i + 1}: {original_query}")
 
-
-
-    cmp_mechanism = CMPMechanism(m=embedding_dim)
-    mahalanobis_mechanism = MahalanobisMechanism(m=embedding_dim, embeddings=embeddings)
-    vickrey_mechanism = VickreyMechanism(m=embedding_dim, embeddings=embeddings)
-
-
-    protected_cmp = cmp_mechanism.get_protected_vectors(embeddings)
-    protected_mah = mahalanobis_mechanism.get_protected_vectors(embeddings)
-    protected_vickrey = vickrey_mechanism.get_protected_vectors(embeddings)
-
-
-    visualize_embeddings(embeddings, protected_cmp, protected_mah, protected_vickrey)
-
-
-    print("Original Queries:\n", queries)
-    print("Protected embeddings using CMP mechanism:\n", protected_cmp)
-    print("\nProtected embeddings using Mahalanobis mechanism:\n", protected_mah)
-    print("\nProtected embeddings using Vickrey mechanism:\n", protected_vickrey)
-
-
-def load_glove_embeddings(glove_file_path):
-    embeddings_dict = {}
-    with open(glove_file_path, 'r', encoding="utf-8") as f:
-        for line in f:
-            values = line.split()
-            word = values[0]
-            vector = np.asarray(values[1:], "float32")
-            embeddings_dict[word] = vector
-    return embeddings_dict
-
-
-glove_file_path = "/content/drive/My Drive/glove.6B.300d.txt"
-glove_embeddings = load_glove_embeddings(glove_file_path)
-
-
-def find_closest_words(embedding, top_n=10):
-    """Finds the closest words to a given embedding in the GloVe vocabulary."""
-    distances = {word: np.linalg.norm(embedding - glove_embeddings[word])
-                 for word in glove_embeddings if word in glove_embeddings}
-    closest_words = sorted(distances, key=distances.get)[:top_n]
-    return closest_words
-
-def obfuscate_text(text, mechanism, glove_embeddings, embedding_dim=300):
-    """Obfuscates text on a per-word basis using the given DP mechanism."""
-    words = text.lower().split()
-
-    embeddings = [glove_embeddings.get(word, np.zeros(embedding_dim)) for word in words]
-
-
-    embeddings = [emb for emb in embeddings if emb.shape == (embedding_dim,)]
-
-    if not embeddings:
-        return ""
-
-    embeddings = np.array(embeddings)
-
-
-    if isinstance(mechanism, CMPMechanism):
-        protected_embeddings = mechanism.get_protected_vectors(embeddings[:, :mechanism.m])
-        protected_embeddings = np.concatenate([protected_embeddings, np.zeros((protected_embeddings.shape[0], embedding_dim - mechanism.m))], axis=1)
-    else:
-
-        projected_embeddings = embeddings[:, :mechanism.m] if mechanism.m != embedding_dim else embeddings
-        protected_embeddings = mechanism.get_protected_vectors(projected_embeddings)
-        protected_embeddings = np.concatenate([protected_embeddings, np.zeros((protected_embeddings.shape[0], embedding_dim - mechanism.m))], axis=1) if mechanism.m != embedding_dim else protected_embeddings
-
-
-    obfuscated_words = [find_closest_words(emb, top_n=1)[0] for emb in protected_embeddings]
-    return " ".join(obfuscated_words)
-
-def calculate_similarities(original_query, protected_embeddings, mechanism, glove_embeddings, embedding_dim=300):
-    """Calculates Jaccard and sentence similarities."""
-    jaccard_similarities = []
-    sentence_similarities = []
-
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    obfuscated_query = obfuscate_text(original_query, mechanism, glove_embeddings, embedding_dim)
-
-    original_words = set(original_query.lower().split())
-    obfuscated_words = set(obfuscated_query.lower().split())
-
-    if original_words and obfuscated_words:
-      jaccard_sim = len(original_words.intersection(obfuscated_words)) / len(original_words.union(obfuscated_words))
-      jaccard_similarities.append(jaccard_sim)
-    else:
-      jaccard_similarities.append(np.nan)
-
-
-    embedding1 = model.encode(original_query, convert_to_tensor=True)
-    embedding2 = model.encode(obfuscated_query, convert_to_tensor=True)
-    cosine_similarity_value = util.cos_sim(embedding1, embedding2).item()
-    sentence_similarities.append(cosine_similarity_value)
-
-    return jaccard_similarities, sentence_similarities
-
-for i, original_query in enumerate(queries):
-    print(f"\nOriginal Query {i + 1}:\n{original_query}")
-
-
-
-    jaccard_cmp, sentence_cmp = calculate_similarities(original_query, protected_cmp, cmp_mechanism, glove_embeddings, embedding_dim) # Pass embedding_dim here
-    print(f"CMP - Jaccard: {np.mean(jaccard_cmp):.4f}, Sentence: {np.mean(sentence_cmp):.4f}")
-
-
-    jaccard_mah, sentence_mah = calculate_similarities(original_query, protected_mah, mahalanobis_mechanism, glove_embeddings)
-    print(f"Mahalanobis - Jaccard: {np.mean(jaccard_mah):.4f}, Sentence: {np.mean(sentence_mah):.4f}")
-
-    vickreym_mechanism = VickreyMMechanism(m=embedding_dim, embeddings=embeddings)
-    jaccard_vickreym, sentence_vickreym = calculate_similarities(original_query, protected_cmp, vickreym_mechanism, glove_embeddings, embedding_dim)
-    print(f"VickreyM - Jaccard: {np.mean(jaccard_vickreym):.4f}, Sentence: {np.mean(sentence_vickreym):.4f}")
-
-    vickreycmp_mechanism = VickreyCMPMechanism(m=embedding_dim, embeddings=embeddings)
-    jaccard_vickreycmp, sentence_vickreycmp = calculate_similarities(original_query, protected_cmp, vickreycmp_mechanism, glove_embeddings, embedding_dim)
-    print(f"VickreyCMP - Jaccard: {np.mean(jaccard_vickreycmp):.4f}, Sentence: {np.mean(sentence_vickreycmp):.4f}")
-
-    jaccard_vickrey, sentence_vickrey = calculate_similarities(original_query, protected_vickrey, vickrey_mechanism, glove_embeddings)
-    print(f"Vickrey - Jaccard: {np.mean(jaccard_vickrey):.4f}, Sentence: {np.mean(sentence_vickrey):.4f}")
+        for mech_name, mech in mechs.items():
+            print('   Mechanism:', mech_name)
+            obfuscated_query = obfuscate_text(original_query, mech, glove_embeddings)
+            print(f"   Obfuscated Query: {obfuscated_query}")
+            jaccard_sim, sentence_sim = calculate_similarities(original_query, obfuscated_query)
+            print(f"{mech_name} - Jaccard: {np.mean(jaccard_sim):.4f}, Sentence: {np.mean(sentence_sim):.4f}")
