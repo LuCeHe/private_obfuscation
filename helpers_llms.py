@@ -85,26 +85,27 @@ def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
     datadir = DATADIR
     # datadir = '/home/lucacehe/.cache/huggingface/hub'
     datadir = os.path.join(os.getenv("HOME"), '.cache', 'huggingface', 'hub')
-    path = os.path.join(datadir, 'models--' +  model_id.replace('/', '--'))
-    print('path:', path)
-    print('   does exist?', os.path.exists(path))
-    if not os.path.exists(path):
+    path_model = os.path.join(datadir, 'models--' +  model_id.replace('/', '--'))
+    path_tokenizer = os.path.join(datadir, 'tokenizers--' + model_id.replace('/', '--'))
+    print('path:', path_model)
+    print('   does exist?', os.path.exists(path_model))
+    if not os.path.exists(path_model):
         print('Downloading model')
         tokenizer = AutoTokenizer.from_pretrained(
             model_id, trust_remote_code=True, truncation_side='left', **tkn_kwargs
         )
 
-        tokenizer.save_pretrained(path)
+        tokenizer.save_pretrained(path_tokenizer)
 
         model = AutoModelForCausalLM.from_pretrained(
             model_id, trust_remote_code=True, **more_kwargs
         )
 
-        model.save_pretrained(path)
+        model.save_pretrained(path_model)
     else:
         print('Loading model')
-        tokenizer = AutoTokenizer.from_pretrained(path, truncation_side='left', **tkn_kwargs)
-        model = AutoModelForCausalLM.from_pretrained(path, **more_kwargs)
+        tokenizer = AutoTokenizer.from_pretrained(path_tokenizer, truncation_side='left', **tkn_kwargs)
+        model = AutoModelForCausalLM.from_pretrained(path_model, **more_kwargs)
 
     return model.to(device), tokenizer
 
