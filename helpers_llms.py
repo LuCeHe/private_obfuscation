@@ -9,7 +9,7 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.paths import WORKDIR, DATADIR, PODATADIR
+from private_obfuscation.paths import WORKDIR, DATADIR, PODATADIR, LOCAL_DATADIR
 
 hf_model_ids = {
     'mamba': 'state-spaces/mamba-130m-hf',
@@ -150,20 +150,30 @@ class SimilarityBERT():
         return similarity_scores
 
 
-def chatgpt_reformulator(queries, reformulation_type, api_model='gpt-3.5-turbo'):
-    if reformulation_type in refs_types:
+def queries_to_reformulations(queries, reformulation_type, model_name='gpt-3.5-turbo'):
+    if reformulation_type in refs_types and model_name in chatgpt_models:
         reformulations = use_chatgpt(
             personality=refs_types[reformulation_type],
             questions=queries,
-            api_model=api_model,
+            api_model=model_name,
         )
+    elif reformulation_type in refs_types and model_name in hf_model_ids:
+        reformulations = use_huggingface(
+            personality=refs_types[reformulation_type],
+            questions=queries,
+            model_id=model_name,
+        )
+
     else:
-        raise ValueError("Invalid reformulation type.")
+        if not model_name in hf_model_ids or not model_name in chatgpt_models:
+            raise ValueError(f"Model must be one of {hf_model_ids} or {chatgpt_models} for now")
+        else:
+            raise ValueError(f"Reformulation type must be one of {refs_types}")
 
     return reformulations
 
 
-def create_reformulations(dataset_name='vaswani', reformulation_type='improve', model='gpt-3.5-turbo'):
+def create_reformulations(dataset_name='vaswani', reformulation_type='improve', model_name='gpt-3.5-turbo'):
     # PyTerrier attempt
     import pyterrier as pt
 
@@ -172,16 +182,18 @@ def create_reformulations(dataset_name='vaswani', reformulation_type='improve', 
         pt.init()
 
     dataset_name_ = dataset_name.replace(':', '-').replace('/', '-')
-    model_name_ = model.replace('/', '-').replace('.', 'p')
+    model_name_ = model_name.replace('/', '-').replace('.', 'p')
 
-    path = os.path.join(PODATADIR, f"reformulations_{model_name_}_{dataset_name_}_{reformulation_type}.txt")
+    filename = f"reformulations_{model_name_}_{dataset_name_}_{reformulation_type}.txt"
+    path = os.path.join(PODATADIR, filename)
+    local_path = os.path.join(LOCAL_DATADIR, filename)
 
-    assert model in chatgpt_models, f"Model must be one of {chatgpt_models} for now"
-    llm_reformulator = chatgpt_reformulator if model in chatgpt_models else \
-        use_huggingface if model in hf_model_ids else None
+    llm_reformulator = queries_to_reformulations if model_name in chatgpt_models or model_name in hf_model_ids else None
+    assert llm_reformulator is not None, f"Model must be one of {hf_model_ids} or {chatgpt_models} for now"
 
     reformulations = None
-    if not os.path.exists(path):
+    if not os.path.exists(path) and not os.path.exists(local_path):
+        print('Creating reformulations...')
         # Load a dataset (use any small available dataset)
         dataset = pt.get_dataset(dataset_name)
 
@@ -193,12 +205,16 @@ def create_reformulations(dataset_name='vaswani', reformulation_type='improve', 
         # Reformulate the queries
         topics["original_query"] = topics["query"]
         queries = [row['query'] for index, row in topics.iterrows()]
-        reformulations = llm_reformulator(queries, reformulation_type)
+        reformulations = llm_reformulator(queries=queries, reformulation_type=reformulation_type, model_name=model_name)
 
         with open(path, 'w') as f:
             f.write(str(reformulations))
 
     else:
+        if os.path.exists(local_path):
+            path = local_path
+
+        print('Loading reformulations...')
         with open(path, 'r') as f:
             reformulations = eval(f.read())
 
@@ -206,21 +222,36 @@ def create_reformulations(dataset_name='vaswani', reformulation_type='improve', 
 
 
 if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_name", type=str, default="irds:beir/scifact/test")
+    parser.add_argument("--reformulation_type", type=str, default="prompt1")
+    parser.add_argument("--model_name", type=str, default="falconmamba")
+    args = parser.parse_args()
+
     ds = [
         # 'irds:vaswani',
         'irds:beir/scifact/test',
-        # 'irds:beir/nfcorpus/test',
-        # 'irds:beir/trec-covid',
+        'irds:beir/nfcorpus/test',
+        'irds:beir/trec-covid',
         # 'irds:beir/arguana',
-        # 'irds:beir/webis-touche2020/v2',
+        'irds:beir/webis-touche2020/v2',
     ]
     # reformulation_type = 'prompt1'
-    model = 'gpt-3.5-turbo'
-    model = 'mamba'
+    # model_name = 'gpt-3.5-turbo'
+    # model_name = 'mamba'
 
-    # for rt in ['prompt1', 'prompt2', 'prompt3', 'promptM1k1', 'promptM1k3', 'promptM1k5', 'promptM2k1', 'promptM2k3', 'promptM2k5', 'promptM3k1', 'promptM3k3', 'promptM3k5']:
-    for rt in ['prompt1']:
+    prompts = ['prompt1', 'prompt2', 'prompt3', 'promptM1k1', 'promptM1k3', 'promptM1k5', 'promptM2k1', 'promptM2k3',
+               'promptM2k5', 'promptM3k1', 'promptM3k3', 'promptM3k5']
+
+    if not args.reformulation_type == 'all':
+        prompts = [args.reformulation_type]
+    if not args.dataset_name == 'all':
+        ds = [args.dataset_name]
+
+    for rt in prompts:
         for d in ds:
             print('-' * 50)
             print(d)
-            create_reformulations(dataset_name=d, reformulation_type=rt, model=model)
+            create_reformulations(dataset_name=d, reformulation_type=rt, model_name=args.model_name)
