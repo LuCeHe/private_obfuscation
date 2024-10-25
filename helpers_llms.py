@@ -87,6 +87,8 @@ def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
     'export HG_DATASETS_CACHE=/scratch/gpfs/$USER/.cache/huggingface/datasets'
     os.environ["HF_HOME"] = DATADIR
     os.environ["HG_DATASETS_CACHE"] = DATADIR
+    os.system(f'export HF_HOME={DATADIR}')
+    os.system(f'export HG_DATASETS_CACHE={DATADIR}')
 
     datadir = DATADIR
     # datadir = '/home/lucacehe/.cache/huggingface/hub'
