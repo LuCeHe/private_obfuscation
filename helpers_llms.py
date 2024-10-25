@@ -82,9 +82,15 @@ def use_chatgpt(
 
 
 def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
+
+    'export HF_HOME=/scratch/gpfs/$USER/.cache/huggingface'
+    'export HG_DATASETS_CACHE=/scratch/gpfs/$USER/.cache/huggingface/datasets'
+    os.environ["HF_HOME"] = DATADIR
+    os.environ["HG_DATASETS_CACHE"] = DATADIR
+
     datadir = DATADIR
     # datadir = '/home/lucacehe/.cache/huggingface/hub'
-    datadir = os.path.join(os.getenv("HOME"), '.cache', 'huggingface', 'hub')
+    # datadir = os.path.join(os.getenv("HOME"), '.cache', 'huggingface', 'hub')
     path_model = os.path.join(datadir, 'models--' +  model_id.replace('/', '--'))
     path_tokenizer = os.path.join(datadir, 'tokenizers--' + model_id.replace('/', '--'))
     print('path:', path_model)
