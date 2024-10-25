@@ -251,28 +251,22 @@ def obfuscate_text(text, mechanism, glove_embeddings):
     return " ".join(obfuscated_words)
 
 
-def calculate_similarities(original_query, obfuscated_query):
+def calculate_similarities(original_query, obfuscated_query, semantic_model):
     """Calculates Jaccard and sentence similarities."""
-    jaccard_similarities = []
-    sentence_similarities = []
 
     original_words = set(original_query.lower().split())
     obfuscated_words = set(obfuscated_query.lower().split())
 
     if original_words and obfuscated_words:
-        jaccard_sim = len(original_words.intersection(obfuscated_words)) / len(original_words.union(obfuscated_words))
-        jaccard_similarities.append(jaccard_sim)
-
+        jaccard_similarity = len(original_words.intersection(obfuscated_words)) / len(original_words.union(obfuscated_words))
     else:
-        jaccard_similarities.append(np.nan)
+        jaccard_similarity = np.nan
 
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    embedding1 = model.encode(original_query, convert_to_tensor=True)
-    embedding2 = model.encode(obfuscated_query, convert_to_tensor=True)
-    cosine_similarity_value = util.cos_sim(embedding1, embedding2).item()
-    sentence_similarities.append(cosine_similarity_value)
+    embedding1 = semantic_model.encode(original_query, convert_to_tensor=True)
+    embedding2 = semantic_model.encode(obfuscated_query, convert_to_tensor=True)
+    semantic_similarity = util.cos_sim(embedding1, embedding2).item()
 
-    return jaccard_similarities, sentence_similarities
+    return jaccard_similarity, semantic_similarity
 
 
 if __name__ == "__main__":
@@ -298,13 +292,14 @@ if __name__ == "__main__":
         "VickreyM": VickreyMMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix),
         "VickreyCMP": VickreyCMPMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix)
     }
+    semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
 
     for i, original_query in enumerate(queries):
         print(f"\nOriginal Query {i + 1}: {original_query}")
 
         for mech_name, mech in mechs.items():
-            print('   Mechanism:', mech_name)
+            print( '   Mechanism:', mech_name)
             obfuscated_query = obfuscate_text(original_query, mech, glove_embeddings)
             print(f"   Obfuscated Query: {obfuscated_query}")
-            jaccard_sim, sentence_sim = calculate_similarities(original_query, obfuscated_query)
-            print(f"{mech_name} - Jaccard: {np.mean(jaccard_sim):.4f}, Sentence: {np.mean(sentence_sim):.4f}")
+            jaccard_sim, semantic_sim = calculate_similarities(original_query, obfuscated_query, semantic_model)
+            print(f"{mech_name} - Jaccard: {jaccard_sim:.4f}, Semantic: {semantic_sim:.4f}")
