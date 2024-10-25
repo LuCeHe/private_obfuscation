@@ -83,7 +83,8 @@ def use_chatgpt(
 
 def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
     datadir = DATADIR
-    datadir = '/home/lucacehe/.cache/huggingface/hub'
+    # datadir = '/home/lucacehe/.cache/huggingface/hub'
+    datadir = os.path.join(os.getenv("HOME"), '.cache', 'huggingface', 'hub')
     path = os.path.join(datadir, model_id.replace('/', '-'))
     print('path:', path)
     print('   does exist?', os.path.exists(path))
