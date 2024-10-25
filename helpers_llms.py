@@ -93,11 +93,12 @@ def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
         tokenizer = AutoTokenizer.from_pretrained(
             model_id, trust_remote_code=True, truncation_side='left', **tkn_kwargs
         )
-        tokenizer.save_pretrained(path)
 
         model = AutoModelForCausalLM.from_pretrained(
             model_id, trust_remote_code=True, **more_kwargs
         )
+
+        tokenizer.save_pretrained(path)
         model.save_pretrained(path)
     else:
         print('Loading model')
