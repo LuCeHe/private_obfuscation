@@ -279,8 +279,8 @@ if __name__ == '__main__':
     import argparse, json
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_name", type=str, default="all")
-    parser.add_argument("--reformulation_type", type=str, default="all")
+    parser.add_argument("--dataset_name", type=str, default="irds:msmarco-document/trec-dl-2020")
+    parser.add_argument("--reformulation_type", type=str, default="vikm_e1")
     parser.add_argument("--model_name", type=str, default='gpt-3.5-turbo')
     args = parser.parse_args()
 
