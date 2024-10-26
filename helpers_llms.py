@@ -315,7 +315,7 @@ if __name__ == '__main__':
     preload_glove = any([rt in dp_refs for rt in reforms])
     extra_args = {}
     if preload_glove:
-        glove_version = 'glove-twitter-25' # '42B'
+        glove_version = '42B' # '42B' 'glove-twitter-25'
         glove_embeddings = load_glove_embeddings(glove_version)
         extra_args['glove_embeddings'] = glove_embeddings
 
