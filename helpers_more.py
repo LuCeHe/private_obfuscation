@@ -46,14 +46,13 @@ def download_nltks():
     nltk_data_path = os.path.join(DATADIR, 'nltk_data')
     os.makedirs(nltk_data_path, exist_ok=True)
     nltk.data.path.append(nltk_data_path)
-
-    for d in ['stopwords', 'wordnet', 'punkt', 'averaged_perceptron_tagger', 'universal_tagset']:
+    for d in ['stopwords', 'wordnet', 'punkt', 'averaged_perceptron_tagger', 'universal_tagset', 'punkt_tab']:
         try:
             pre_folder = ''
             post_folder = '' if not d == 'wordnet' else '.zip'
             if d == 'stopwords' or d == 'wordnet':
                 pre_folder = 'corpora/'
-            elif d == 'punkt':
+            elif d == 'punkt' or d == 'punkt_tab':
                 pre_folder = 'tokenizers/'
             elif d == 'averaged_perceptron_tagger' or d == 'universal_tagset':
                 pre_folder = 'taggers/'
