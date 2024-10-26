@@ -1,35 +1,15 @@
 import os, random, string, re, sys
 from tqdm import tqdm
 
+from private_obfuscation.helpers_more import download_nltks
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.paths import DATADIR
 
-import nltk
-
-nltk_data_path = os.path.join(DATADIR, 'nltk_data')
-os.makedirs(nltk_data_path, exist_ok=True)
-nltk.data.path.append(nltk_data_path)
-
-for d in ['stopwords', 'wordnet', 'punkt', 'averaged_perceptron_tagger', 'universal_tagset']:
-    try:
-        pre_folder = ''
-        post_folder = '' if not d == 'wordnet' else '.zip'
-        if d == 'stopwords' or d == 'wordnet':
-            pre_folder = 'corpora/'
-        elif d == 'punkt':
-            pre_folder = 'tokenizers/'
-        elif d == 'averaged_perceptron_tagger' or d == 'universal_tagset':
-            pre_folder = 'taggers/'
-        nltk.data.find(pre_folder + d + post_folder)
-        print(f"{d} tokenizer is already installed.")
-    except LookupError:
-        print(f"{d} tokenizer not found. Downloading...")
-        nltk.download(d, download_dir=nltk_data_path)
+download_nltks()
 
 from nltk.corpus import wordnet as wn
 from nltk.corpus import stopwords
@@ -50,8 +30,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 import pyterrier as pt
 from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR, DATADIR
-
-from private_obfuscation.helpers_llms import use_chatgpt
 
 
 # Function to reformulate queries by replacing random characters
@@ -443,8 +421,7 @@ def word_net_generalize(sentence='nice cat'):
 if __name__ == "__main__":
     # test()
     # test_small_example()
-    # test_reformulators()
+    test_reformulators()
     # test_get_glove_vector()
-    word_net_generalize()
-    # create_reformulations()
+    # word_net_generalize()
     pass

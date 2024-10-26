@@ -9,6 +9,7 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
+from private_obfuscation.helpers_differential_privacy import use_diffpriv_glove, load_glove_embeddings
 from private_obfuscation.paths import WORKDIR, DATADIR, PODATADIR, LOCAL_DATADIR
 
 hf_model_ids = {
@@ -27,6 +28,8 @@ chatgpt_models = [
     'gpt-3.5-turbo',
 ]
 
+llms = chatgpt_models + list(hf_model_ids.keys())
+
 refs_types = {
     "improve": "You are an expert in Information Retrieval. Reword the query into a very effective version.",
     "prompt1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query.",
@@ -43,10 +46,18 @@ refs_types = {
     "promptM3k5": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 5 dummy queries, which generalize this query.",
 }
 
+dp_refs = [
+    "cmp_e1", "cmp_e5", "cmp_e50",
+    "mah_e1", "mah_e5", "mah_e50",
+    "vik_e1", "vik_e5", "vik_e50",
+    "vikm_e1", "vikm_e5", "vikm_e50",
+    "vikcmp_e1", "vikcmp_e5", "vikcmp_e50",
+]
+
 
 def use_chatgpt(
         personality="You are a helpful assistant that translates English to French. Translate the user sentence.",
-        questions=["What is the capital of France?", "What is the capital of Germany?"],
+        queries=["What is the capital of France?", "What is the capital of Germany?"],
         api_model='gpt-3.5-turbo',
 ):
     os.path.join(WORKDIR, 'all_stuff.py', )
@@ -68,21 +79,21 @@ def use_chatgpt(
 
     answers = []
     print("Generating responses with ChatGPT...")
-    for question in tqdm(questions):
+    for question in tqdm(queries):
         messages = [
             ("system", personality),
             ("human", question),
         ]
         ai_msg = llm.invoke(messages).content
-        print(ai_msg)
+        print('question', question)
+        print('reply', ai_msg)
         answers.append(ai_msg)
 
-    pairs = {question: answer for question, answer in zip(questions, answers)}
+    pairs = {question: answer for question, answer in zip(queries, answers)}
     return pairs
 
 
 def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
-
     'export HF_HOME=/scratch/gpfs/$USER/.cache/huggingface'
     'export HG_DATASETS_CACHE=/scratch/gpfs/$USER/.cache/huggingface/datasets'
     os.environ["HF_HOME"] = DATADIR
@@ -93,7 +104,7 @@ def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
     datadir = DATADIR
     # datadir = '/home/lucacehe/.cache/huggingface/hub'
     # datadir = os.path.join(os.getenv("HOME"), '.cache', 'huggingface', 'hub')
-    path_model = os.path.join(datadir, 'models--' +  model_id.replace('/', '--'))
+    path_model = os.path.join(datadir, 'models--' + model_id.replace('/', '--'))
     path_tokenizer = os.path.join(datadir, 'tokenizers--' + model_id.replace('/', '--'))
     print('path:', path_model)
     print('   does exist?', os.path.exists(path_model))
@@ -120,7 +131,7 @@ def get_model(model_id, device, more_kwargs={}, tkn_kwargs={}):
 
 def use_huggingface(
         personality="You are a helpful assistant that translates English to French. Translate the USER SENTENCE. USER SENTENCE:",
-        questions=["What is the capital of France?", "What is the capital of Germany?"],
+        queries=["What is the capital of France?", "What is the capital of Germany?"],
         model_id='mambaxl'
 ):
     model_id = hf_model_ids[model_id]
@@ -134,7 +145,7 @@ def use_huggingface(
 
     answers = []
     print(f"Generating responses with {model_id}...")
-    for question in tqdm(questions):
+    for question in tqdm(queries):
         print('-' * 50)
         full_question = f"{personality} {question}. SOLUTION:".replace('..', '.').replace('?.', '?')
 
@@ -148,7 +159,7 @@ def use_huggingface(
         print('reply:        ', reply)
         answers.append(reply)
 
-    pairs = {question: answer for question, answer in zip(questions, answers)}
+    pairs = {question: answer for question, answer in zip(queries, answers)}
     return pairs
 
 
@@ -169,31 +180,40 @@ class SimilarityBERT():
         return similarity_scores
 
 
-def queries_to_reformulations(queries, reformulation_type, model_name='gpt-3.5-turbo'):
+def queries_to_reformulations(queries, reformulation_type, model_name='gpt-3.5-turbo', extra_args=None):
     if reformulation_type in refs_types and model_name in chatgpt_models:
         reformulations = use_chatgpt(
             personality=refs_types[reformulation_type],
-            questions=queries,
+            queries=queries,
             api_model=model_name,
         )
 
     elif reformulation_type in refs_types and model_name in hf_model_ids:
         reformulations = use_huggingface(
             personality=refs_types[reformulation_type],
-            questions=queries,
+            queries=queries,
             model_id=model_name,
         )
 
+    elif reformulation_type in dp_refs:
+        reformulations = use_diffpriv_glove(
+            reformulation_type=reformulation_type,
+            queries=queries,
+            extra_args=extra_args
+        )
+
     else:
-        if not model_name in hf_model_ids or not model_name in chatgpt_models:
-            raise ValueError(f"Model must be one of {hf_model_ids} or {chatgpt_models} for now")
+        if not model_name in llms:
+            raise ValueError(f"Model must be one of {llms} for now")
         else:
             raise ValueError(f"Reformulation type must be one of {refs_types}")
 
     return reformulations
 
 
-def create_reformulations(dataset_name='vaswani', reformulation_type='improve', model_name='gpt-3.5-turbo'):
+def create_reformulations(
+        dataset_name='vaswani', reformulation_type='improve', model_name='gpt-3.5-turbo', extra_args=None
+):
     # PyTerrier attempt
     import pyterrier as pt
 
@@ -208,11 +228,22 @@ def create_reformulations(dataset_name='vaswani', reformulation_type='improve', 
     path = os.path.join(PODATADIR, filename)
     local_path = os.path.join(LOCAL_DATADIR, filename)
 
-    llm_reformulator = queries_to_reformulations if model_name in chatgpt_models or model_name in hf_model_ids else None
-    assert llm_reformulator is not None, f"Model must be one of {hf_model_ids} or {chatgpt_models} for now"
+    reformulator = queries_to_reformulations if model_name in llms or reformulation_type in dp_refs else None
+    assert reformulator is not None, f"Model must be one of {llms} for now or use Differential Privacy"
 
     reformulations = None
-    if not os.path.exists(path) and not os.path.exists(local_path):
+    if reformulation_type == 'count':
+        dataset = pt.get_dataset(dataset_name)
+
+        # Get the original topics (queries) from the dataset
+        topics = dataset.get_topics('text')
+
+        print('len queries:', len(topics['query']))
+        chars = sum([len(row['query']) for index, row in topics.iterrows()])
+        print('      chars:', chars)
+
+
+    elif not os.path.exists(path) and not os.path.exists(local_path):
         print('Creating reformulations...')
         # Load a dataset (use any small available dataset)
         dataset = pt.get_dataset(dataset_name)
@@ -225,9 +256,12 @@ def create_reformulations(dataset_name='vaswani', reformulation_type='improve', 
         # Reformulate the queries
         topics["original_query"] = topics["query"]
         queries = [row['query'] for index, row in topics.iterrows()]
-        reformulations = llm_reformulator(queries=queries, reformulation_type=reformulation_type, model_name=model_name)
+        reformulations = reformulator(
+            queries=queries, reformulation_type=reformulation_type, model_name=model_name,
+            extra_args=extra_args
+        )
 
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding="utf-8") as f:
             f.write(str(reformulations))
 
     else:
@@ -245,9 +279,9 @@ if __name__ == '__main__':
     import argparse, json
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_name", type=str, default="irds:beir/scifact/test")
-    parser.add_argument("--reformulation_type", type=str, default="prompt1")
-    parser.add_argument("--model_name", type=str, default="falconmamba")
+    parser.add_argument("--dataset_name", type=str, default="all")
+    parser.add_argument("--reformulation_type", type=str, default="all")
+    parser.add_argument("--model_name", type=str, default='gpt-3.5-turbo')
     args = parser.parse_args()
 
     print(json.dumps(args.__dict__, indent=2))
@@ -257,23 +291,38 @@ if __name__ == '__main__':
         'irds:beir/scifact/test',
         'irds:beir/nfcorpus/test',
         'irds:beir/trec-covid',
-        # 'irds:beir/arguana',
         'irds:beir/webis-touche2020/v2',
+        # 'irds:beir/arguana',
+        'irds:msmarco-document/trec-dl-2019',
+        'irds:msmarco-document/trec-dl-2020',
     ]
     # reformulation_type = 'prompt1'
     # model_name = 'gpt-3.5-turbo'
     # model_name = 'mamba'
 
-    prompts = ['prompt1', 'prompt2', 'prompt3', 'promptM1k1', 'promptM1k3', 'promptM1k5', 'promptM2k1', 'promptM2k3',
+    reforms = ['prompt1', 'prompt2', 'prompt3', 'promptM1k1', 'promptM1k3', 'promptM1k5', 'promptM2k1', 'promptM2k3',
                'promptM2k5', 'promptM3k1', 'promptM3k3', 'promptM3k5']
 
     if not args.reformulation_type == 'all':
-        prompts = [args.reformulation_type]
+        reforms = [args.reformulation_type]
+
+    if args.reformulation_type == 'dps':
+        reforms = dp_refs
+
     if not args.dataset_name == 'all':
         ds = [args.dataset_name]
 
-    for rt in prompts:
+    preload_glove = any([rt in dp_refs for rt in reforms])
+    extra_args = {}
+    if preload_glove:
+        glove_embeddings = load_glove_embeddings()
+        extra_args['glove_embeddings'] = glove_embeddings
+
+    print('preload', preload_glove)
+
+    for rt in reforms:
+        model_name = args.model_name if not rt in dp_refs else 'diffpriv'
         for d in ds:
             print('-' * 50)
-            print(d)
-            create_reformulations(dataset_name=d, reformulation_type=rt, model_name=args.model_name)
+            print(f'Dataset: {d}, reformulation: {rt}')
+            create_reformulations(dataset_name=d, reformulation_type=rt, model_name=model_name, extra_args=extra_args)

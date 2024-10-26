@@ -7,6 +7,8 @@ Original file is located at
     https://colab.research.google.com/drive/1SIqM6CfIY3Cuja5NCZ50yFKwpzLqcuYN
 """
 
+from tqdm import tqdm
+
 import numpy as np
 import pandas as pd
 import numpy.random as npr
@@ -14,6 +16,16 @@ from scipy.linalg import sqrtm
 import os
 import matplotlib.pyplot as plt
 from sentence_transformers import SentenceTransformer, util
+
+from private_obfuscation.helpers_more import download_nltks
+from private_obfuscation.paths import DATADIR, PODATADIR
+
+download_nltks()
+
+from nltk.tokenize.treebank import TreebankWordDetokenizer
+from nltk.tokenize import word_tokenize
+
+detokenizer = TreebankWordDetokenizer()
 
 
 def euclidean_distance_matrix(x, y):
@@ -215,6 +227,15 @@ def visualize_embeddings(original, protected_cmp, protected_mah, protected_vickr
     plt.show()
 
 
+def load_data():
+    from gensim.models import KeyedVectors
+
+    base_dir = DATADIR
+    path = os.path.join(base_dir, 'glove-twitter-25', 'glove-twitter-25.gz')
+    model = KeyedVectors.load_word2vec_format(path)
+    return model
+
+
 def load_glove_embeddings(gensim_name='glove-twitter-25'):
     import gensim.downloader as api
     embeddings_dict = api.load(gensim_name)
@@ -222,7 +243,7 @@ def load_glove_embeddings(gensim_name='glove-twitter-25'):
     return embeddings_dict
 
 
-def find_closest_words(embedding, top_n=10):
+def find_closest_words(embedding, glove_embeddings, top_n=10):
     """Finds the closest words to a given embedding in the GloVe vocabulary."""
     distances = {
         word: np.linalg.norm(embedding - glove_embeddings[word])
@@ -232,12 +253,25 @@ def find_closest_words(embedding, top_n=10):
     return closest_words
 
 
-def obfuscate_text(text, mechanism, glove_embeddings):
-    embedding_dim = glove_embeddings.vector_size
-    """Obfuscates text on a per-word basis using the given DP mechanism."""
-    words = text.lower().split()
+def get_glove_vector(glove_embeddings, word):
+    if not word in glove_embeddings:
+        # get the most similar word that is in the dictionary
+        similarities = {
+            w: get_jacard_similarity(set(list(word)), set(list(w)))
+            for w in glove_embeddings.index_to_key
+        }
+        most_similar_word = max(similarities, key=similarities.get)
+        word = most_similar_word
+    vector = glove_embeddings[word]
+    return vector
 
-    embeddings = [glove_embeddings.get(word, np.zeros(embedding_dim)) for word in words]
+
+def obfuscate_text(text, mechanism, glove_embeddings):
+    """Obfuscates text on a per-word basis using the given DP mechanism."""
+
+    # tokenize
+    words = word_tokenize(text.lower())
+    embeddings = [get_glove_vector(glove_embeddings, word) for word in words]
 
     if not embeddings:
         return ""
@@ -245,22 +279,23 @@ def obfuscate_text(text, mechanism, glove_embeddings):
     embeddings = np.array(embeddings)
 
     protected_embeddings = mechanism.get_protected_vectors(embeddings)
-    print('protected_embeddings.shape', protected_embeddings.shape)
+    obfuscated_words = [glove_embeddings.similar_by_vector(emb)[0][0] for emb in protected_embeddings]
+    obfuscated_sentence = detokenizer.detokenize(obfuscated_words)
+    return obfuscated_sentence
 
-    obfuscated_words = [find_closest_words(emb, top_n=1)[0] for emb in protected_embeddings]
-    return " ".join(obfuscated_words)
+
+def get_jacard_similarity(set1, set2):
+    intersection = len(set1.intersection(set2))
+    union = len(set1.union(set2))
+    return intersection / union if union > 0 else 0 if set1 and set2 else np.nan
 
 
 def calculate_similarities(original_query, obfuscated_query, semantic_model):
     """Calculates Jaccard and sentence similarities."""
 
-    original_words = set(original_query.lower().split())
-    obfuscated_words = set(obfuscated_query.lower().split())
-
-    if original_words and obfuscated_words:
-        jaccard_similarity = len(original_words.intersection(obfuscated_words)) / len(original_words.union(obfuscated_words))
-    else:
-        jaccard_similarity = np.nan
+    original_words = set(word_tokenize(original_query.lower()))
+    obfuscated_words = set(word_tokenize(obfuscated_query.lower()))
+    jaccard_similarity = get_jacard_similarity(original_words, obfuscated_words)
 
     embedding1 = semantic_model.encode(original_query, convert_to_tensor=True)
     embedding2 = semantic_model.encode(obfuscated_query, convert_to_tensor=True)
@@ -269,8 +304,47 @@ def calculate_similarities(original_query, obfuscated_query, semantic_model):
     return jaccard_similarity, semantic_similarity
 
 
-if __name__ == "__main__":
+def use_diffpriv_glove(
+        reformulation_type='vikcmp_e1',
+        queries=["What is the capital of France?", "What is the capital of Germany?"],
+        extra_args=None
+):
+    if not extra_args is None and 'glove_embeddings' in extra_args:
+        glove_embeddings = extra_args['glove_embeddings']
+    else:
+        glove_embeddings = load_glove_embeddings()
 
+    embedding_dim = glove_embeddings.vector_size
+
+    glove_matrix = np.array([glove_embeddings[word] for word in glove_embeddings.index_to_key])
+
+    epsilon = int(reformulation_type.split('_e')[-1])
+    if reformulation_type.startswith('cmp'):
+        mech = CMPMechanism(m=embedding_dim, epsilon=epsilon)
+    elif reformulation_type.startswith('mah'):
+        mech = MahalanobisMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix)
+    elif reformulation_type.startswith('vik_'):
+        mech = VickreyMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix)
+    elif reformulation_type.startswith('vikm_'):
+        mech = VickreyMMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix)
+    elif reformulation_type.startswith('vikcmp_'):
+        mech = VickreyCMPMechanism(m=embedding_dim, epsilon=epsilon, embeddings=glove_matrix)
+    else:
+        raise ValueError(f"Unknown mechanism type: {reformulation_type}")
+
+    obfuscations = []
+    print(f"Generating responses with Differential Privacy ({reformulation_type})...")
+    for query in tqdm(queries):
+        obfuscated_query = obfuscate_text(query, mech, glove_embeddings)
+
+        print(obfuscated_query)
+        obfuscations.append(obfuscated_query)
+
+    pairs = {query: obfuscated_query for query, obfuscated_query in zip(queries, obfuscations)}
+    return pairs
+
+
+def test_diffpriv():
     glove_embeddings = load_glove_embeddings()
     embedding_dim = glove_embeddings.vector_size
 
@@ -298,8 +372,85 @@ if __name__ == "__main__":
         print(f"\nOriginal Query {i + 1}: {original_query}")
 
         for mech_name, mech in mechs.items():
-            print( '   Mechanism:', mech_name)
+            print('   Mechanism:', mech_name)
             obfuscated_query = obfuscate_text(original_query, mech, glove_embeddings)
             print(f"   Obfuscated Query: {obfuscated_query}")
             jaccard_sim, semantic_sim = calculate_similarities(original_query, obfuscated_query, semantic_model)
             print(f"{mech_name} - Jaccard: {jaccard_sim:.4f}, Semantic: {semantic_sim:.4f}")
+
+
+def load_glove_model_42B():
+    path = os.path.join(PODATADIR, 'glove_commoncrawl_42B', 'glove.42B.300d.txt')
+    print("Loading Glove Model")
+    glove_model = {}
+    with open(path, 'r', encoding="utf8") as f:
+        for line in tqdm(f, total=1917494):
+            split_line = line.split()
+            word = split_line[0]
+            embedding = np.array(split_line[1:], dtype=np.float64)
+            glove_model[word] = embedding
+            assert embedding.shape == (300,), f"Shape is {embedding.shape} for word {word}"
+    print(f"{len(glove_model)} words loaded!")
+    return glove_model
+
+
+def load_glove_model_42B_gensim():
+    import requests
+    import zipfile
+
+    glove_commoncrawl_42B_folder = os.path.join(PODATADIR, 'glove_commoncrawl_42B')
+    os.makedirs(glove_commoncrawl_42B_folder, exist_ok=True)
+
+    # download this zip https://nlp.stanford.edu/data/glove.42B.300d.zip
+    if not os.path.exists(os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.txt')):
+        # Define the URL and the local path to save the file
+        url = "https://nlp.stanford.edu/data/glove.42B.300d.zip"
+        # zip_path = "glove.42B.300d.zip"
+        zip_path = os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.zip')
+
+        # Download the file
+        print("Starting download...")
+        response = requests.get(url, stream=True)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Write the file content to disk in chunks
+            with open(zip_path, "wb") as file:
+                for chunk in response.iter_content(chunk_size=1024):
+                    file.write(chunk)
+            print("Download complete.")
+        else:
+            print(f"Failed to download. Status code: {response.status_code}")
+
+        # Extract the downloaded zip file
+        print("Extracting files...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall("glove_42B")
+        print("Extraction complete.")
+
+
+
+
+    # print("Loading Glove Model with Gensim")
+    #
+    # import gensim
+    # import time
+    # from gensim.models import KeyedVectors
+    #
+    # start_time = time.time()
+    # # Specify the path to your GloVe file
+    # glove_file = 'path/to/glove.42B.300d.txt'
+    # path = os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.txt')
+    #
+    # # Convert GloVe file format to a Gensim KeyedVectors format
+    # glove_model = KeyedVectors.load_word2vec_format(path, binary=False, no_header=True)
+    #
+    # cat_vector = glove_model['cat']
+    # print(cat_vector)
+    # print("--- %s seconds ---" % (time.time() - start_time))
+
+
+if __name__ == "__main__":
+    # test_diffpriv()
+    # load_glove_model_42B()
+    load_glove_model_42B_gensim()
