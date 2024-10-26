@@ -236,11 +236,72 @@ def load_data():
     return model
 
 
-def load_glove_embeddings(gensim_name='glove-twitter-25'):
+def load_glove_embeddings(gensim_name='42B'):
+    if gensim_name == '42B':
+        return load_glove_model_42B_gensim()
+
+    # 'glove-twitter-25'
     import gensim.downloader as api
     embeddings_dict = api.load(gensim_name)
 
     return embeddings_dict
+
+
+def load_glove_model_42B_gensim():
+    import requests
+    import zipfile
+
+    import gensim
+    import time
+    from gensim.models import KeyedVectors
+
+    glove_commoncrawl_42B_folder = os.path.join(PODATADIR, 'glove_commoncrawl_42B')
+    txt_path = os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.txt')
+    os.makedirs(glove_commoncrawl_42B_folder, exist_ok=True)
+
+    # download this zip https://nlp.stanford.edu/data/glove.42B.300d.zip
+    if not os.path.exists(txt_path):
+        # Define the URL and the local path to save the file
+        url = "https://nlp.stanford.edu/data/glove.42B.300d.zip"
+        # zip_path = "glove.42B.300d.zip"
+        zip_path = os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.zip')
+
+        if not os.path.exists(zip_path):
+            # Download the file
+            print("Starting download...")
+            response = requests.get(url, stream=True)
+
+            # Check if the request was successful
+            if response.status_code == 200:
+                # Write the file content to disk in chunks
+                with open(zip_path, "wb") as file:
+                    for chunk in response.iter_content(chunk_size=1024):
+                        file.write(chunk)
+                print("Download complete.")
+            else:
+                print(f"Failed to download. Status code: {response.status_code}")
+
+        # Extract the downloaded zip file
+        print("Extracting files...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(glove_commoncrawl_42B_folder)
+        print("Extraction complete.")
+
+    print("Loading Glove Model with Gensim")
+
+    start_time = time.time()
+    # Specify the path to your GloVe file
+    glove_file = 'path/to/glove.42B.300d.txt'
+    path = os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.txt')
+
+    # Convert GloVe file format to a Gensim KeyedVectors format
+    glove_model = KeyedVectors.load_word2vec_format(path, binary=False, no_header=True)
+
+    cat_vector = glove_model['cat']
+    print(cat_vector)
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+    return glove_model
 
 
 def find_closest_words(embedding, glove_embeddings, top_n=10):
@@ -379,78 +440,9 @@ def test_diffpriv():
             print(f"{mech_name} - Jaccard: {jaccard_sim:.4f}, Semantic: {semantic_sim:.4f}")
 
 
-def load_glove_model_42B():
-    path = os.path.join(PODATADIR, 'glove_commoncrawl_42B', 'glove.42B.300d.txt')
-    print("Loading Glove Model")
-    glove_model = {}
-    with open(path, 'r', encoding="utf8") as f:
-        for line in tqdm(f, total=1917494):
-            split_line = line.split()
-            word = split_line[0]
-            embedding = np.array(split_line[1:], dtype=np.float64)
-            glove_model[word] = embedding
-            assert embedding.shape == (300,), f"Shape is {embedding.shape} for word {word}"
-    print(f"{len(glove_model)} words loaded!")
-    return glove_model
-
-
-def load_glove_model_42B_gensim():
-    import requests
-    import zipfile
-
-    glove_commoncrawl_42B_folder = os.path.join(PODATADIR, 'glove_commoncrawl_42B')
-    os.makedirs(glove_commoncrawl_42B_folder, exist_ok=True)
-
-    # download this zip https://nlp.stanford.edu/data/glove.42B.300d.zip
-    if not os.path.exists(os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.txt')):
-        # Define the URL and the local path to save the file
-        url = "https://nlp.stanford.edu/data/glove.42B.300d.zip"
-        # zip_path = "glove.42B.300d.zip"
-        zip_path = os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.zip')
-
-        # Download the file
-        print("Starting download...")
-        response = requests.get(url, stream=True)
-
-        # Check if the request was successful
-        if response.status_code == 200:
-            # Write the file content to disk in chunks
-            with open(zip_path, "wb") as file:
-                for chunk in response.iter_content(chunk_size=1024):
-                    file.write(chunk)
-            print("Download complete.")
-        else:
-            print(f"Failed to download. Status code: {response.status_code}")
-
-        # Extract the downloaded zip file
-        print("Extracting files...")
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall("glove_42B")
-        print("Extraction complete.")
-
-
-
-
-    # print("Loading Glove Model with Gensim")
-    #
-    # import gensim
-    # import time
-    # from gensim.models import KeyedVectors
-    #
-    # start_time = time.time()
-    # # Specify the path to your GloVe file
-    # glove_file = 'path/to/glove.42B.300d.txt'
-    # path = os.path.join(glove_commoncrawl_42B_folder, 'glove.42B.300d.txt')
-    #
-    # # Convert GloVe file format to a Gensim KeyedVectors format
-    # glove_model = KeyedVectors.load_word2vec_format(path, binary=False, no_header=True)
-    #
-    # cat_vector = glove_model['cat']
-    # print(cat_vector)
-    # print("--- %s seconds ---" % (time.time() - start_time))
-
-
 if __name__ == "__main__":
     # test_diffpriv()
     # load_glove_model_42B()
-    load_glove_model_42B_gensim()
+    glove_model = load_glove_model_42B_gensim()
+    print('cat')
+    print(glove_model['cat'])
