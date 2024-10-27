@@ -375,13 +375,6 @@ def create_reformulations(
     path = os.path.join(PODATADIR, filename)
     local_path = os.path.join(LOCAL_DATADIR, filename)
 
-    reformulator = queries_to_reformulations \
-        if (model_name in llms
-            or reformulation_type in dp_refs
-            or reformulation_type == 'wordnet') \
-        else None
-    assert reformulator is not None, f"Model must be one of {llms} for now or use Differential Privacy"
-
     reformulations = None
     if reformulation_type == 'count':
         dataset = pt.get_dataset(dataset_name)
@@ -407,7 +400,7 @@ def create_reformulations(
         # Reformulate the queries
         topics["original_query"] = topics["query"]
         queries = [row['query'] for index, row in topics.iterrows()]
-        reformulations = reformulator(
+        reformulations = queries_to_reformulations(
             queries=queries, reformulation_type=reformulation_type, model_name=model_name,
             extra_args=extra_args
         )

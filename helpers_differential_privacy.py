@@ -297,8 +297,6 @@ def load_glove_model_42B_gensim():
     # Convert GloVe file format to a Gensim KeyedVectors format
     glove_model = KeyedVectors.load_word2vec_format(path, binary=False, no_header=True)
 
-    cat_vector = glove_model['cat']
-    print(cat_vector)
     print("--- %s seconds ---" % (time.time() - start_time))
 
     return glove_model
