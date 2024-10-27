@@ -358,6 +358,14 @@ def queries_to_reformulations(queries, reformulation_type, model_name='gpt-3.5-t
     return reformulations
 
 
+def get_reformulation_name(model_name, dataset_name, reformulation_type):
+    dataset_name_ = dataset_name.replace(':', '-').replace('/', '-')
+    model_name_ = model_name.replace('/', '-').replace('.', 'p')
+
+    filename = f"reformulations_{model_name_}_{dataset_name_}_{reformulation_type}.txt"
+
+    return filename
+
 def create_reformulations(
         dataset_name='vaswani', reformulation_type='improve', model_name='gpt-3.5-turbo', extra_args=None
 ):
@@ -368,10 +376,7 @@ def create_reformulations(
     if not pt.started():
         pt.init()
 
-    dataset_name_ = dataset_name.replace(':', '-').replace('/', '-')
-    model_name_ = model_name.replace('/', '-').replace('.', 'p')
-
-    filename = f"reformulations_{model_name_}_{dataset_name_}_{reformulation_type}.txt"
+    filename = get_reformulation_name(model_name, dataset_name, reformulation_type)
     path = os.path.join(PODATADIR, filename)
     local_path = os.path.join(LOCAL_DATADIR, filename)
 

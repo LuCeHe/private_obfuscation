@@ -42,10 +42,11 @@ retrievers = [
 
 
 def parse_args():
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--reformulation", type=str, default="none", choices=reformulation_types)
     parser.add_argument("--retriever", type=str, default="bm25", choices=retrievers)
-    parser.add_argument("--dataset_name", type=str, default="irds:vaswani")
+    parser.add_argument("--dataset_name", type=str, default="irds:beir/scifact/test")
     parser.add_argument("--notes", type=str, default="")
     args = parser.parse_args()
 
