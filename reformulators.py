@@ -1,13 +1,18 @@
-import os, random, string, re, sys
+import os, random, string, re, sys, argparse, json
 from tqdm import tqdm
-
-from private_obfuscation.helpers_more import download_nltks
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
+from private_obfuscation.helpers_more import download_nltks
+from private_obfuscation.helpers_similarities import reformulation_similarity, get_similarity_reformulations, \
+    character_similarity
+from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR, DATADIR
+from private_obfuscation.helpers_differential_privacy import use_diffpriv_glove, load_glove_embeddings
+from private_obfuscation.helpers_llms import use_chatgpt, refs_types, use_huggingface, hf_model_ids, chatgpt_models, \
+    dp_refs, llms
 
 download_nltks()
 
@@ -15,21 +20,12 @@ from nltk.corpus import wordnet as wn
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag
+from nltk.tokenize.treebank import TreebankWordDetokenizer
 
 from nltk.stem import PorterStemmer
 
 stop_words = set(stopwords.words('english'))
-
-CDIR = os.path.dirname(os.path.realpath(__file__))
-WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
-
-sys.path.append(WORKDIR)
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-
-import pyterrier as pt
-from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR, DATADIR
+detokenizer = TreebankWordDetokenizer()
 
 
 # Function to reformulate queries by replacing random characters
@@ -98,73 +94,6 @@ def reformulate_queries(topics, reformulation_type, dataset_name='vaswani'):
     return topics
 
 
-def simplify_sentence(sentence, ps, stop_words):
-    sentence = ''.join([c for c in sentence if c.isalpha() or c == ' '])
-    sentence = " ".join(sentence.split())
-    sentence_set = set([ps.stem(w) for w in word_tokenize(sentence.lower()) if not w in stop_words])
-    return sentence_set
-
-
-def reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kwargs={}):
-    # to implement: bm25, bleu, my scan technique, etc.
-    # sentence1 = 'measurement of dielectric constant of liquids by the use of microwave techniques'
-    # sentence2 = 'How can microwave techniques be utilized to measure the dielectric constant of liquids effectively?'
-    # sentence1 with sentence2 gives tfidfcosine of 0.4
-    # sentence1 with sentence1 gives tfidfcosine of 1
-    # however if:
-    # sentence2 = sentence1 + ' which is very nice and cool. I like it so much because it is very nice and cool.'
-    # then tfidfcosine of sentence1 with sentence2 is about 0.4 again
-
-    if distance_type == 'tfidfcosine':
-        # tf-idf
-
-        # Create a TF-IDF Vectorizer object
-        tfidf_vectorizer = TfidfVectorizer()
-
-        # Convert the sentences to their TF-IDF representation
-        tfidf_matrix = tfidf_vectorizer.fit_transform([sentence1, sentence2])
-
-        # Calculate the cosine similarity between the two sentences
-        similarity_score = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
-
-    elif distance_type == 'inter':
-        ps = kwargs['ps']
-        stop_words = kwargs['stop_words']
-
-        # stemmatize and remove stopwords
-        set1 = simplify_sentence(sentence1, ps, stop_words)
-        set2 = simplify_sentence(sentence2, ps, stop_words)
-
-        z = set1.intersection(set2)
-        similarity_score = len(z) / min(len(set1), len(set2))
-
-    else:
-        raise ValueError(f"Invalid distance type: {distance_type}")
-
-    return similarity_score
-
-
-def get_distance_reformulations(reformulations, distance_type='tfidfcosine'):
-    # Calculate the distance between the original and reformulated queries
-    distances = []
-    print('\nCalculating reformulation distances...')
-    kwargs = {}
-    if distance_type == 'inter':
-        kwargs['ps'] = PorterStemmer()
-        kwargs['stop_words'] = stop_words
-
-    for query, reformulated_query in tqdm(reformulations.items()):
-        distance = reformulation_distance(query, reformulated_query, distance_type, kwargs=kwargs)
-        distances.append(distance)
-
-    mean_distance = sum(distances) / len(distances)
-    std_distance = (sum((d - mean_distance) ** 2 for d in distances) / len(distances)) ** 0.5
-
-    print(
-        f"Mean and Std distance between original and reformulated queries: {mean_distance:.2f} pm {std_distance:.2f}")
-    return mean_distance
-
-
 def test():
     # reformulations = create_reformulations()
     dataset_name = 'vaswani'
@@ -182,24 +111,10 @@ def test():
             break
     print('-' * 50)
 
-    get_distance_reformulations(reformulations)
-    get_distance_reformulations(reformulations, 'inter')
+    get_similarity_reformulations(reformulations)
+    get_similarity_reformulations(reformulations, 'inter')
     # use_chatgpt()
     # reformulation_distance()
-
-
-def test_small_example():
-    sentence1 = 'find a nice restaurant close to Duomo'
-    sentence2 = 'look for a good restaurant near Sforzesco'
-
-    kwargs = {}
-
-    kwargs['ps'] = PorterStemmer()
-    kwargs['stop_words'] = stop_words
-    similarity = reformulation_distance(sentence1, sentence2, distance_type='inter', kwargs=kwargs)
-    print('similarity inter:', similarity)
-    similarity = reformulation_distance(sentence1, sentence2, distance_type='tfidfcosine', kwargs=kwargs)
-    print('similarity tfidfcosine:', similarity)
 
 
 def wordnet_reformulator(query):
@@ -255,14 +170,6 @@ gensim_available = [
 ]
 
 
-def character_similarity(string_1, string_2):
-    set_1 = set(string_1.lower())
-    set_2 = set(string_2.lower())
-    intersection = set_1.intersection(set_2)
-    char_sim = len(intersection) / (min(len(set_1), len(set_2)))
-    return char_sim
-
-
 class GensimPretrained():
     # https://radimrehurek.com/gensim/models/word2vec.html
     def __init__(self, gensim_name=None):
@@ -316,7 +223,7 @@ def wordnet_query_expansion(query):
 
 
 def test_reformulators():
-    from private_obfuscation.helpers_llms import SimilarityBERT
+    from private_obfuscation.helpers_similarities import SimilarityBERT
 
     kwargs = {}
 
@@ -326,19 +233,22 @@ def test_reformulators():
     queries = [
         "I want to know about patient confidentiality",
         "What are the symptoms of diabetes?",
-        "How to manage mental health issues"
+        "How to manage mental health issues",
+        "How to prevent heart disease",
+        "I have a bishop in my hand",
     ]
 
     bert_similarity = SimilarityBERT()
 
     print('Loading reformulators...')
-    gp = GensimPretrained()
+    # gp = GensimPretrained()
     reformulators = {
+        'truewordnet': wordnet_generalize,
         'wordnet': wordnet_reformulator_3,
-        'googlenews': gp.get_gensim_reformulator('word2vec-google-news-300'),
-        'glovewiki': gp.get_gensim_reformulator('glove-wiki-gigaword-300'),
+        # 'googlenews': gp.get_gensim_reformulator('word2vec-google-news-300'),
+        # 'glovewiki': gp.get_gensim_reformulator('glove-wiki-gigaword-300'),
         # 'conceptnet': GensimPretrained().get_gensim_reformulator('conceptnet-numberbatch-17-06-300'),
-        'glovetwitter': gp.get_gensim_reformulator('glove-twitter-200'),
+        # 'glovetwitter': gp.get_gensim_reformulator('glove-twitter-200'),
     }
 
     print('Testing reformulators...')
@@ -356,72 +266,227 @@ def test_reformulators():
                 sem_similarity = bert_similarity.get_similarity([q, reformulation])
                 assert sem_similarity.shape == (1, 1)
                 sem_similarity = sem_similarity[0][0]
-                sin_similarity = reformulation_distance(q, reformulation, distance_type='inter', kwargs=kwargs)
+                sin_similarity = reformulation_similarity(q, reformulation, distance_type='inter', kwargs=kwargs)
 
                 print('   Semantic Similarity: ', sem_similarity, sem_similarity.shape)
                 print('   Syntactic Similarity:', sin_similarity)
             except Exception as e:
                 print(f'   {k}: Error:', e)
 
-        # print('Wordnet: ', wn_reformulation)
-        # sem_similarity = bert_similarity.get_similarity([q, wn_reformulation])
-        # assert sem_similarity.shape == (1, 1)
-        # sem_similarity = sem_similarity[0][0]
-        # sin_similarity = reformulation_distance(q, wn_reformulation, distance_type='inter', kwargs=kwargs)
 
-        # print('Semantic Similarity:', sem_similarity, sem_similarity.shape)
-        # print('Syntactic Similarity:', sin_similarity)
+pronouns = ['I', 'you', 'he', 'she', 'it', 'we', 'they']
 
 
-class GloveDPreformulator():
-    pass
+def get_hyphol(w, p):
+    # print(w, p)
+    pos = p[0].lower()
+    if p == 'PRON' and w in pronouns:
+        return random.choice([p for p in pronouns if p != w])
+    elif pos == 'p':
+        pos = 'n'
+    elif pos == '.':
+        return w
+    elif pos == 'x' or pos == 'c' or pos == 'd':
+        pos = None
+
+    syns = wn.synsets(w, pos=pos)
+    hypernims = [h.lemma_names('eng') for syn in syns for h in syn.hypernyms()]
+    holonyms = [h.lemma_names('eng') for syn in syns for h in syn.member_holonyms()]
+    hyphols = hypernims + holonyms
+
+    new_word = w
+    if hyphols:
+        flatten = [h for sublist in hyphols for h in sublist if not h == w]
+        if flatten:
+            new_word = random.choice(flatten)
+
+    return new_word
 
 
-def test_get_glove_vector():
-    import numpy as np
-    gensim_name = 'glove-twitter-25'
-    import gensim.downloader as api
-    model = api.load(gensim_name)
-
-    # get vector for car
-    gensim_vector = model['car']
-    print(gensim_vector)
-
-    # add noise to vector
-    noise = 0.1
-    noisy_vector = gensim_vector + noise * np.random.normal(size=gensim_vector.shape)
-
-    # get most similar word
-    similar_word = model.similar_by_vector(noisy_vector)
-    print(similar_word)
-
-
-def word_net_generalize(sentence='nice cat'):
-    words = sentence.split()
-
+def wordnet_generalize(sentence='nice cat'):
     pos = pos_tag(word_tokenize(sentence), tagset='universal')
-    print(pos)
+    new_words = [get_hyphol(w, p) for w, p in pos]
+    return detokenizer.detokenize(new_words).replace('_', ' ')
 
-    for word in words:
-        print('-' * 50)
-        syns = wn.synsets(word)
-        print(syns)
 
-    for w, p in pos:
+def use_wordnet_generalization(
+        queries=["What is the capital of France?", "What is the capital of Germany?"],
+):
+    obfuscations = []
+    for query in tqdm(queries):
         print('-' * 50)
-        print(w, p)
-        syns = wn.synsets(w, pos=p[0].lower())
-        print(syns)
-        hypernims = [h.lemmas() for syn in syns for h in syn.hypernyms()]
-        holonyms = [h.lemmas() for syn in syns for h in syn.member_holonyms()]
-        print('hypernims', hypernims)
-        print('holonyms', holonyms)
+        print(query)
+        obfuscated_query = wordnet_generalize(query)
+
+        print(obfuscated_query)
+        obfuscations.append(obfuscated_query)
+
+    pairs = {query: obfuscated_query for query, obfuscated_query in zip(queries, obfuscations)}
+    return pairs
+
+
+def queries_to_reformulations(queries, reformulation_type, model_name='gpt-3.5-turbo', extra_args=None):
+    if reformulation_type in refs_types and model_name in chatgpt_models:
+        reformulations = use_chatgpt(
+            personality=refs_types[reformulation_type],
+            queries=queries,
+            api_model=model_name,
+        )
+
+    elif reformulation_type in refs_types and model_name in hf_model_ids:
+        reformulations = use_huggingface(
+            personality=refs_types[reformulation_type],
+            queries=queries,
+            model_id=model_name,
+        )
+
+    elif reformulation_type in dp_refs:
+        reformulations = use_diffpriv_glove(
+            reformulation_type=reformulation_type,
+            queries=queries,
+            extra_args=extra_args
+        )
+
+    elif reformulation_type == 'wordnet':
+        print(f"Generating responses with WordNet Generalization...")
+        reformulations = use_wordnet_generalization(queries)
+        # reformulations = [wordnet_generalize(q) for q in queries]
+
+    else:
+        raise ValueError(f"Model must be one of {llms} for now. Otherwise use Differential Privacy or WordNet.")
+
+    return reformulations
+
+
+def create_reformulations(
+        dataset_name='vaswani', reformulation_type='improve', model_name='gpt-3.5-turbo', extra_args=None
+):
+    # PyTerrier attempt
+    import pyterrier as pt
+
+    # Initialize PyTerrier
+    if not pt.started():
+        pt.init()
+
+    dataset_name_ = dataset_name.replace(':', '-').replace('/', '-')
+    model_name_ = model_name.replace('/', '-').replace('.', 'p')
+
+    filename = f"reformulations_{model_name_}_{dataset_name_}_{reformulation_type}.txt"
+    path = os.path.join(PODATADIR, filename)
+    local_path = os.path.join(LOCAL_DATADIR, filename)
+
+    reformulator = queries_to_reformulations \
+        if (model_name in llms
+            or reformulation_type in dp_refs
+            or reformulation_type == 'wordnet') \
+        else None
+    assert reformulator is not None, f"Model must be one of {llms} for now or use Differential Privacy"
+
+    reformulations = None
+    if reformulation_type == 'count':
+        dataset = pt.get_dataset(dataset_name)
+
+        # Get the original topics (queries) from the dataset
+        topics = dataset.get_topics('text')
+
+        print('len queries:', len(topics['query']))
+        chars = sum([len(row['query']) for index, row in topics.iterrows()])
+        print('      chars:', chars)
+
+
+    elif not os.path.exists(path) and not os.path.exists(local_path):
+        print('Creating reformulations...')
+        # Load a dataset (use any small available dataset)
+        dataset = pt.get_dataset(dataset_name)
+
+        # Get the original topics (queries) from the dataset
+        topics = dataset.get_topics('text')
+
+        print('len queries:', len(topics['query']))
+
+        # Reformulate the queries
+        topics["original_query"] = topics["query"]
+        queries = [row['query'] for index, row in topics.iterrows()]
+        reformulations = reformulator(
+            queries=queries, reformulation_type=reformulation_type, model_name=model_name,
+            extra_args=extra_args
+        )
+
+        with open(path, 'w', encoding="utf-8") as f:
+            f.write(str(reformulations))
+
+    else:
+        if os.path.exists(local_path):
+            path = local_path
+
+        print('Loading reformulations...')
+        with open(path, 'r') as f:
+            reformulations = eval(f.read())
+
+    return reformulations
+
+
+def main_reformulate():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_name", type=str, default="all")
+    parser.add_argument("--reformulation_type", type=str, default="wordnet")
+    parser.add_argument("--model_name", type=str, default='gpt-3.5-turbo')
+    args = parser.parse_args()
+
+    print(json.dumps(args.__dict__, indent=2))
+
+    ds = [
+        # 'irds:vaswani',
+        'irds:beir/scifact/test',
+        'irds:beir/nfcorpus/test',
+        'irds:beir/trec-covid',
+        'irds:beir/webis-touche2020/v2',
+        # 'irds:beir/arguana',
+        'irds:msmarco-document/trec-dl-2019',
+        'irds:msmarco-document/trec-dl-2020',
+    ]
+    # reformulation_type = 'prompt1'
+    # model_name = 'gpt-3.5-turbo'
+    # model_name = 'mamba'
+
+    reforms_llm = ['prompt1', 'prompt2', 'prompt3', 'promptM1k1', 'promptM1k3', 'promptM1k5', 'promptM2k1',
+                   'promptM2k3',
+                   'promptM2k5', 'promptM3k1', 'promptM3k3', 'promptM3k5']
+
+    reforms = [args.reformulation_type]
+    if args.reformulation_type == 'allllm':
+        reforms = reforms_llm
+
+    if args.reformulation_type == 'dps':
+        reforms = dp_refs
+
+    if not args.dataset_name == 'all':
+        ds = [args.dataset_name]
+
+    preload_glove = any([rt in dp_refs for rt in reforms])
+    extra_args = {}
+    if preload_glove:
+        glove_version = '42B'  # '42B' 'glove-twitter-25'
+        glove_embeddings = load_glove_embeddings(glove_version)
+        extra_args['glove_embeddings'] = glove_embeddings
+
+    print('preload', preload_glove)
+
+    for rt in reforms:
+        model_name = args.model_name if not rt in dp_refs else 'diffpriv'
+        model_name = model_name if not rt == 'wordnet' else 'wordnet'
+        for d in ds:
+            print('-' * 50)
+            print(f'Dataset: {d}, reformulation: {rt}')
+            create_reformulations(dataset_name=d, reformulation_type=rt, model_name=model_name, extra_args=extra_args)
 
 
 if __name__ == "__main__":
     # test()
     # test_small_example()
-    test_reformulators()
+    # test_reformulators()
     # test_get_glove_vector()
-    # word_net_generalize()
+    # sentence = wordnet_generalize('de novo assembly of sequence data has more specific contigs than unassembled sequence data')
+    # print(sentence)
+    main_reformulate()
     pass

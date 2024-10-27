@@ -304,16 +304,6 @@ def load_glove_model_42B_gensim():
     return glove_model
 
 
-def find_closest_words(embedding, glove_embeddings, top_n=10):
-    """Finds the closest words to a given embedding in the GloVe vocabulary."""
-    distances = {
-        word: np.linalg.norm(embedding - glove_embeddings[word])
-        for word in glove_embeddings
-    }
-    closest_words = sorted(distances, key=distances.get)[:top_n]
-    return closest_words
-
-
 def get_glove_vector(glove_embeddings, word):
     if not word in glove_embeddings:
         # get the most similar word that is in the dictionary
@@ -343,27 +333,6 @@ def obfuscate_text(text, mechanism, glove_embeddings):
     obfuscated_words = [glove_embeddings.similar_by_vector(emb)[0][0] for emb in protected_embeddings]
     obfuscated_sentence = detokenizer.detokenize(obfuscated_words)
     return obfuscated_sentence
-
-
-def get_jacard_similarity(set1, set2):
-    intersection = len(set1.intersection(set2))
-    union = len(set1.union(set2))
-    return intersection / union if union > 0 else 0 if set1 and set2 else np.nan
-
-
-def calculate_similarities(original_query, obfuscated_query, semantic_model):
-    """Calculates Jaccard and sentence similarities."""
-
-    original_words = set(word_tokenize(original_query.lower()))
-    obfuscated_words = set(word_tokenize(obfuscated_query.lower()))
-    jaccard_similarity = get_jacard_similarity(original_words, obfuscated_words)
-
-    embedding1 = semantic_model.encode(original_query, convert_to_tensor=True)
-    embedding2 = semantic_model.encode(obfuscated_query, convert_to_tensor=True)
-    semantic_similarity = util.cos_sim(embedding1, embedding2).item()
-
-    return jaccard_similarity, semantic_similarity
-
 
 def use_diffpriv_glove(
         reformulation_type='vikcmp_e1',
