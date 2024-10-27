@@ -15,9 +15,10 @@ import numpy.random as npr
 from scipy.linalg import sqrtm
 import os
 import matplotlib.pyplot as plt
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import SentenceTransformer
 
 from private_obfuscation.helpers_more import download_nltks
+from private_obfuscation.helpers_similarities import get_jacard_similarity
 from private_obfuscation.paths import DATADIR, PODATADIR
 
 download_nltks()

@@ -1,4 +1,4 @@
-import os, random, string, re, sys, argparse, json
+import os, random, string, re, sys, argparse, json, shutil
 from tqdm import tqdm
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
@@ -62,7 +62,6 @@ def get_reformulator(reformulation_type, dataset_name='vaswani'):
 
 
 def get_saved_reformulations(dataset_name, reformulation_type, model_name='wordnet', return_reformulations=False):
-
     filename = get_reformulation_name(model_name, dataset_name, reformulation_type)
     path = os.path.join(LOCAL_DATADIR, filename)
     print('Saved reformulations path:', path)
@@ -375,6 +374,7 @@ def get_reformulation_name(model_name, dataset_name, reformulation_type):
 
     return filename
 
+
 def create_reformulations(
         dataset_name='vaswani', reformulation_type='improve', model_name='gpt-3.5-turbo', extra_args=None
 ):
@@ -488,12 +488,60 @@ def main_reformulate():
             create_reformulations(dataset_name=d, reformulation_type=rt, model_name=model_name, extra_args=extra_args)
 
 
+def gpt3_ref_cleaner(reformulation, query, filename):
+    clean_reformulation = reformulation
+    if 'prompt3' in filename:
+        if '\n' in reformulation:
+            clean_reformulation = reformulation.split('\n')[-1]
+
+    if 'promptM1k1' in filename or 'promptM2k1' in filename or 'promptM3k1' in filename:
+        if ':' in reformulation:
+            clean_reformulation = reformulation.split(':')[-1]
+
+    if 'promptM1k3' in filename or 'promptM1k5' in filename or 'promptM2k3' in filename or 'promptM2k5' in filename \
+            or 'promptM3k3' in filename or 'promptM3k5' in filename:
+
+        for j in range(6):
+            clean_reformulation = clean_reformulation.replace(f'{j}. ', 'x.!')
+
+        clean_reformulation = [r.split('x.!')[-1] for r in clean_reformulation.split('\n')] + [query]
+        clean_reformulation = [r[0].upper() + r[1:] for r in clean_reformulation if not r == '']
+        clean_reformulation = [r if r[-1] in ['.', '?', '!'] else r + '.' for r in clean_reformulation]
+
+        random.shuffle(clean_reformulation)
+        clean_reformulation = ' '.join(clean_reformulation)
+
+    clean_reformulation = clean_reformulation.replace('\"', '').strip()
+    return clean_reformulation
+
+
+def cleaning_gpt3_reformulations():
+    # path = os.path.join(PODATADIR, filename)
+    dirs = [d for d in os.listdir(PODATADIR) if 'reformulations' in d and 'gpt' in d and 'original' in d]
+    print(dirs)
+
+    # d = dirs[0]
+    # d = 'reformulations_gpt-3p5-turbo_irds-beir-nfcorpus-test_promptM3k5_original.txt'
+
+    for d in dirs:
+        path = os.path.join(PODATADIR, d)
+        destination = path.replace('_original.txt', '.txt')
+
+        print(f'Loading reformulations from {d}...')
+
+        with open(path, 'r') as f:
+            reformulations = eval(f.read())
+
+        new_reformulations = {}
+
+        for query, reformulation in tqdm(reformulations.items()):
+            clean_reformulation = gpt3_ref_cleaner(reformulation, query, d)
+            new_reformulations[query] = clean_reformulation
+
+        with open(destination, 'w') as f:
+            f.write(str(new_reformulations))
+
+
 if __name__ == "__main__":
-    # test()
-    # test_small_example()
-    # test_reformulators()
-    # test_get_glove_vector()
-    # sentence = wordnet_generalize('de novo assembly of sequence data has more specific contigs than unassembled sequence data')
-    # print(sentence)
     main_reformulate()
     pass

@@ -1,5 +1,7 @@
 import os, random, string, re, sys
 
+from sentence_transformers import util
+
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
@@ -131,7 +133,7 @@ def test_small_example():
 def get_jacard_similarity(set1, set2):
     intersection = len(set1.intersection(set2))
     union = len(set1.union(set2))
-    return intersection / union if union > 0 else 0 if set1 and set2 else np.nan
+    return intersection / union if union > 0 else 0 if set1 and set2 else None
 
 
 def calculate_similarities(original_query, obfuscated_query, semantic_model):

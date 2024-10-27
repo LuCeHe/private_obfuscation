@@ -150,9 +150,23 @@ def loop_all_over_reformulations():
                 #     print('Error:', e)
                 #     continue
 
+def check_done_exps():
+    path = os.path.join(PODATADIR, 'done_experiments.json')
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            done_experiments = json.load(f)
+        print(json.dumps(done_experiments, indent=2))
+
+        done_experiments = [k for k in done_experiments if not 'chatgpt' in k['reformulation']]
+
+        print(json.dumps(done_experiments, indent=2))
+
+        # with open(path, 'w') as f:
+        #     json.dump(done_experiments, f)
 
 if __name__ == "__main__":
     # args = parse_args()
     # main(args)
 
-    loop_all_over_reformulations()
+    # loop_all_over_reformulations()
+    check_done_exps()
