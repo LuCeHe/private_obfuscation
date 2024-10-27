@@ -71,7 +71,7 @@ def get_saved_reformulations(dataset_name, reformulation_type, model_name='wordn
             raise FileNotFoundError("reformulations file not found.")
 
     print('Saved reformulations path:', path)
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='latin-1') as f:
         reformulations = eval(f.read())
 
     def reformulator(query):

@@ -1,5 +1,6 @@
 import os, random, string, re, sys
 
+import numpy as np
 from sentence_transformers import util
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
@@ -7,7 +8,8 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.helpers_more import download_nltks
+from private_obfuscation.paths import PODATADIR
+from private_obfuscation.helpers_more import download_nltks, NumpyEncoder
 
 download_nltks()
 
@@ -21,7 +23,6 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
 
 stop_words = set(stopwords.words('english'))
 
@@ -41,15 +42,8 @@ def simplify_sentence(sentence, ps, stop_words):
     return sentence_set
 
 
-def reformulation_similarity(sentence1, sentence2, distance_type='tfidfcosine', kwargs={}):
-    # to implement: bm25, bleu, my scan technique, etc.
-    # sentence1 = 'measurement of dielectric constant of liquids by the use of microwave techniques'
-    # sentence2 = 'How can microwave techniques be utilized to measure the dielectric constant of liquids effectively?'
-    # sentence1 with sentence2 gives tfidfcosine of 0.4
-    # sentence1 with sentence1 gives tfidfcosine of 1
-    # however if:
-    # sentence2 = sentence1 + ' which is very nice and cool. I like it so much because it is very nice and cool.'
-    # then tfidfcosine of sentence1 with sentence2 is about 0.4 again
+def reformulation_similarity(sentences, distance_type='tfidfcosine', kwargs={}):
+    sentence1, sentence2 = sentences
 
     if distance_type == 'tfidfcosine':
         # tf-idf
@@ -65,7 +59,6 @@ def reformulation_similarity(sentence1, sentence2, distance_type='tfidfcosine', 
 
     elif distance_type == 'inter':
         ps = kwargs['ps']
-        stop_words = kwargs['stop_words']
 
         # stemmatize and remove stopwords
         set1 = simplify_sentence(sentence1, ps, stop_words)
@@ -73,6 +66,14 @@ def reformulation_similarity(sentence1, sentence2, distance_type='tfidfcosine', 
 
         z = set1.intersection(set2)
         similarity_score = len(z) / min(len(set1), len(set2))
+
+    elif distance_type == 'jaccard':
+        ps = kwargs['ps']
+
+        set1 = simplify_sentence(sentence1, ps, stop_words)
+        set2 = simplify_sentence(sentence2, ps, stop_words)
+
+        similarity_score = get_jacard_similarity(set1, set2)
 
     else:
         raise ValueError(f"Invalid distance type: {distance_type}")
@@ -150,20 +151,93 @@ def calculate_similarities(original_query, obfuscated_query, semantic_model):
     return jaccard_similarity, semantic_similarity
 
 
-
 similarities_ready = [
     'minilm', 'bert',
-    'jaccard', 'tfidf', 'inter',
-    'char_jaccard', 'char_tfidf', 'char_inter'
+    'jaccard', 'tfidfcosine', 'inter',
+    # 'char_jaccard', 'char_tfidf', 'char_inter'
 ]
+
+
 class SimilaritiesCalculator():
     def __init__(self, metric_name):
         assert metric_name in similarities_ready, f"Similarity metric {metric_name} not available. Choose from {similarities_ready}."
         self.metric_name = metric_name
 
         if metric_name == 'minilm':
-            self.model = SentenceTransformer('all-MiniLM-L6-v2')
+            self.model = SimilarityBERT('all-MiniLM-L6-v2')
+            self.get_similarity = self.model.get_similarity
+
         elif metric_name == 'bert':
-            self.model = SentenceTransformer('bert-base-nli-mean-tokens')
+            self.model = SimilarityBERT('bert-base-nli-mean-tokens')
+            self.get_similarity = self.model.get_similarity
+
+        elif metric_name in ['jaccard', 'tfidfcosine', 'inter']:
+            ps = PorterStemmer()
+            kwargs = {'ps': ps}
+            self.get_similarity = lambda sentences: reformulation_similarity(sentences, distance_type=metric_name,
+                                                                             kwargs=kwargs)
+
         else:
             raise ValueError(f"Invalid metric name: {metric_name}")
+
+
+def test_similarities_measurer():
+    import json
+
+    # save the args of the experiments already run, so I don't run them again
+    done_similarities = {}
+    simpath = os.path.join(PODATADIR, 'done_similarities.json')
+    if os.path.exists(simpath):
+        with open(simpath, 'r') as f:
+            done_similarities = json.load(f)
+    else:
+        with open(simpath, 'w') as f:
+            json.dump(done_similarities, f)
+
+    sim_calculators = {
+        'minilm': SimilaritiesCalculator('minilm'),
+        'bert': SimilaritiesCalculator('bert'),
+        'jaccard': SimilaritiesCalculator('jaccard'),
+        'tfidfcosine': SimilaritiesCalculator('tfidfcosine'),
+        'inter': SimilaritiesCalculator('inter'),
+    }
+
+    dirs = [d for d in os.listdir(PODATADIR) if 'reformulations' in d and 'gpt' in d and not 'original' in d]
+    print(dirs)
+
+    # d = dirs[0]
+    # d = 'reformulations_gpt-3p5-turbo_irds-beir-nfcorpus-test_promptM3k5.txt'
+
+    for d in dirs:
+        if d in done_similarities:
+            continue
+
+        path = os.path.join(PODATADIR, d)
+
+        print(f'Loading reformulations from {d}...')
+
+        with open(path, 'r') as f:
+            reformulations = eval(f.read())
+
+        sims = {k: [] for k in sim_calculators.keys()}
+        i = 0
+        for query, reformulated_query in reformulations.items():
+            for metric_name, sim_calculator in sim_calculators.items():
+                similarity = sim_calculator.get_similarity([query, reformulated_query])
+                sims[metric_name].append(similarity)
+            i += 1
+            if i > 10:
+                break
+
+        done_similarities[d] = sims
+
+        with open(simpath, 'w') as f:
+            json.dump(done_similarities, f, cls=NumpyEncoder)
+
+        print('d', d)
+        for metric_name, sims in sims.items():
+            print(f'{metric_name} mean: {np.mean(sims):.2f} std: {np.std(sims):.2f}')
+
+
+if __name__ == '__main__':
+    test_similarities_measurer()

@@ -105,6 +105,8 @@ def get_dataset(dataset_name):
         print(f"Indexing dataset: {dataset_name}")
         indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
     else:
+        if not pt.started():
+            pt.init()
         print(f"Loading index for dataset ({dataset_name}): {index_path}")
         indexref = pt.IndexRef.of(os.path.join(index_path, 'data.properties'))
 
