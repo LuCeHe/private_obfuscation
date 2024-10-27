@@ -31,7 +31,7 @@ chatgpt_models = [
 llms = chatgpt_models + list(hf_model_ids.keys())
 
 refs_types = {
-    "improve": "You are an expert in Information Retrieval. Reword the query into a very effective version.",
+    # "improve": "You are an expert in Information Retrieval. Reword the query into a very effective version.",
     "prompt1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query.",
     "prompt2": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query by applying the concept of generalization.",
     "prompt3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query by applying the concept of differential privacy.",

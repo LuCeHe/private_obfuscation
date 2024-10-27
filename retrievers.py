@@ -83,21 +83,36 @@ nice_ds += bigger_ds
 
 
 def get_dataset(dataset_name):
+
+    fields = ('text',)
+    topics_arg = 'text'
+
     # unsure: irds:beir/quora/test
     assert dataset_name in nice_ds, f"Dataset name must be one of {nice_ds}"
     dataset_main_name = dataset_name.replace('irds:', '')
     dataset_main_name = dataset_main_name.split('/')[1] if '/' in dataset_main_name else dataset_main_name
     index_name = f"{dataset_main_name}-index"
-    index_path = os.path.join(DATADIR, index_name)
 
+    print(f"Loading dataset: {dataset_name}")
     dataset = pt.datasets.get_dataset(dataset_name)
-    indexer = pt.index.IterDictIndexer(index_path, meta={'docno': 39}, verbose=True, overwrite=True)
-    fields = ('text',)
-    topics_arg = 'text'
+    index_path = os.path.join(DATADIR, 'pyterrier-indices', index_name)
 
-    indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
+
+    if not os.path.exists(os.path.join(index_path, 'data.properties')):
+        print(f"Creating index for dataset: {dataset_name}")
+        indexer = pt.index.IterDictIndexer(index_path, meta={'docno': 39}, verbose=True, overwrite=False)
+
+        print(f"Indexing dataset: {dataset_name}")
+        indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
+    else:
+        print(f"Loading index for dataset ({dataset_name}): {index_path}")
+        indexref = pt.IndexRef.of(os.path.join(index_path, 'data.properties'))
+
+
+    print(f"Loading index: {index_name}")
     index = pt.IndexFactory.of(indexref)
 
+    print(f"Loading topics and qrels for dataset: {dataset_name}")
     topics = dataset.get_topics(topics_arg)
     qrels = dataset.get_qrels()
     return index, topics, qrels

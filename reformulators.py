@@ -51,17 +51,23 @@ def get_reformulator(reformulation_type, dataset_name='vaswani'):
     elif reformulation_type == "random_char":
         return random_reformulate_query
 
-    elif reformulation_type == 'chatgpt_imp rove':
-        return get_saved_llm_reformulations(dataset_name, 'improve')
 
     else:
-        raise ValueError("Invalid reformulation type.")
+        rt = reformulation_type.replace('chatgpt3p5_', '')
+
+        model_name = 'gpt-3.5-turbo' if 'chatgpt3p5' in reformulation_type else None
+        model_name = model_name if not rt in dp_refs else 'diffpriv'
+        model_name = model_name if not rt == 'wordnet' else 'wordnet'
+        return get_saved_reformulations(dataset_name, rt, model_name=model_name)
 
 
-def get_saved_llm_reformulations(dataset_name, reformulation_type, return_reformulations=False):
-    path = os.path.join(LOCAL_DATADIR, f"obfuscations_{dataset_name}_{reformulation_type}.txt")
+def get_saved_reformulations(dataset_name, reformulation_type, model_name='wordnet', return_reformulations=False):
+
+    filename = get_reformulation_name(model_name, dataset_name, reformulation_type)
+    path = os.path.join(LOCAL_DATADIR, filename)
+    print('Saved reformulations path:', path)
     if not os.path.exists(path):
-        path = os.path.join(PODATADIR, f"obfuscations_{dataset_name}_{reformulation_type}.txt")
+        path = os.path.join(PODATADIR, filename)
         if not os.path.exists(path):
             raise FileNotFoundError("reformulations file not found.")
 
@@ -71,6 +77,9 @@ def get_saved_llm_reformulations(dataset_name, reformulation_type, return_reform
 
     def reformulator(query):
         reformulation = reformulations[query].lower()
+
+        print(f"Original Query:     {query}")
+        print(f"reformulated Query: {reformulation}")
         reformulation = re.sub(r'[^\w\s]', '', reformulation)
 
         return reformulation
@@ -98,7 +107,7 @@ def test():
     # reformulations = create_reformulations()
     dataset_name = 'vaswani'
     reformulation_type = 'improve'
-    _, reformulations = get_saved_llm_reformulations(dataset_name, reformulation_type, return_reformulations=True)
+    _, reformulations = get_saved_reformulations(dataset_name, reformulation_type, return_reformulations=True)
 
     i = 0
     for query, reformulated_query in reformulations.items():
