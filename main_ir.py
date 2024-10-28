@@ -100,7 +100,7 @@ def main(args):
     print('Done')
 
 
-def loop_all_over_reformulations():
+def loop_all_over_reformulations(notes):
     # save the args of the experiments already run, so I don't run them again
     missing_experiments = []
     path = os.path.join(LOCAL_DATADIR, 'missing_experiments.json')
@@ -116,9 +116,19 @@ def loop_all_over_reformulations():
     # all_ds = ['irds:msmarco-document/trec-dl-2020']
     i = 0
     missing_i = 0
-    for dataset_name in all_ds:
-        for reformulation in all_reformulation_types:
-            for retriever in retrivs:
+
+    all_ds_ = all_ds
+    all_reformulation_types_ = all_reformulation_types
+    retrivs_ = retrivs
+
+    if 'reversed' in notes:
+        all_ds_ = all_ds[::-1]
+        all_reformulation_types_ = all_reformulation_types[::-1]
+        retrivs_ = retrivs[::-1]
+
+    for dataset_name in all_ds_:
+        for reformulation in all_reformulation_types_:
+            for retriever in retrivs_:
                 i += 1
                 print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
@@ -150,6 +160,6 @@ if __name__ == "__main__":
     args = parse_args()
 
     if 'loop' in args.notes:
-        loop_all_over_reformulations()
+        loop_all_over_reformulations(notes=args.notes)
     else:
         main(args)
