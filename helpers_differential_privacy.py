@@ -334,7 +334,6 @@ def obfuscate_text(text, mechanism, glove_embeddings):
     return obfuscated_sentence.replace('_', ' ')
 
 
-
 def get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix):
     if reformulation_type.startswith('cmp'):
         mech = CMPMechanism(m=embedding_dim, epsilon=epsilon)
@@ -349,6 +348,7 @@ def get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix):
     else:
         raise ValueError(f"Unknown mechanism type: {reformulation_type}")
     return mech
+
 
 def use_diffpriv_glove(
         reformulation_type='vikcmp_e1',
@@ -432,16 +432,11 @@ def test_diffpriv():
 
 
 if __name__ == "__main__":
-    # glove_version = 'glove-twitter-25'  # '42B' 'glove-twitter-25'
-    # glove_embeddings = load_glove_embeddings(glove_version)
-    # refs = use_diffpriv_glove(
-    #     'vikcmp_e1',
-    #     ["What is the capital of France?", "What is the capital of Germany?"],
-    #     extra_args={'glove_embeddings': glove_embeddings}
-    # )
-    # print(refs)
-
-    for i in range(120):
-        print(i, i % 100)
-
-
+    glove_version = 'glove-twitter-25'  # '42B' 'glove-twitter-25'
+    glove_embeddings = load_glove_embeddings(glove_version)
+    refs = use_diffpriv_glove(
+        'vikcmp_e1',
+        ["What is the capital of France?", "What is the capital of Germany?"],
+        extra_args={'glove_embeddings': glove_embeddings}
+    )
+    print(refs)
