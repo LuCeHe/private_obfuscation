@@ -48,7 +48,7 @@ def get_retriever(dataset_name, retriever, index=None, indexref=None, dataset=No
         raise NotImplementedError("FAISS retriever is not functional yet.")
 
     elif retriever == "monoT5":
-        from pyterrier_t5 import MonoT5ReRanker, DuoT5ReRanker
+        from pyterrier_t5 import MonoT5ReRanker
         monoT5 = MonoT5ReRanker()
 
         DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
