@@ -50,6 +50,7 @@ def parse_args():
     parser.add_argument("--reformulation", type=str, default="wordnet", choices=reformulation_types)
     parser.add_argument("--retriever", type=str, default="monoT5", choices=retrievers)
     parser.add_argument("--dataset_name", type=str, default="irds:beir/nfcorpus/test")
+    parser.add_argument("--notes", type=str, default="")
     args = parser.parse_args()
 
     return args
@@ -110,7 +111,7 @@ def loop_all_over_reformulations():
         with open(path, 'w') as f:
             json.dump(done_experiments, f)
 
-    retrivs = ['colbert']
+    retrivs = ['monoT5']
     i = 0
     for dataset_name in ds:
         for reformulation in reformulation_types:
@@ -142,6 +143,8 @@ def loop_all_over_reformulations():
 
 if __name__ == "__main__":
     args = parse_args()
-    main(args)
 
-    # loop_all_over_reformulations()
+    if args.notes == 'loop':
+        loop_all_over_reformulations()
+    else:
+        main(args)
