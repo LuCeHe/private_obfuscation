@@ -78,7 +78,7 @@ def get_saved_reformulations(dataset_name, reformulation_type, model_name='wordn
         reformulation = reformulations[query].lower()
 
         print(f"Original Query:     {query}")
-        print(f"reformulated Query: {reformulation}")
+        print(f"Reformulated Query: {reformulation}")
         reformulation = re.sub(r'[^\w\s]', '', reformulation)
 
         return reformulation
@@ -113,7 +113,7 @@ def test():
         print('-' * 50)
         print(f"Original Query:   {query}")
         reformulation = re.sub(r'[^\w\s]', '', reformulated_query).lower()
-        print(f"reformulated Query: {reformulation}")
+        print(f"Reformulated Query: {reformulation}")
         i += 1
         if i > 5:
             break

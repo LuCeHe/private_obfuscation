@@ -5,24 +5,18 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.helpers_more import do_save_dicts, create_exp_dir
-from private_obfuscation.paths import EXPSDIR, PODATADIR
-from private_obfuscation.helpers_llms import refs_types, dp_refs
-
-
-from private_obfuscation.reformulators import reformulate_queries
-
 import pyterrier as pt
 
-# pt.java.init()
+if not pt.started():
+    pt.init()
 
-
-# import pyterrier
-# from pyterrier import measures
 RR, nDCG, P, R, AP = pt.measures.RR, pt.measures.nDCG, pt.measures.P, pt.measures.R, pt.measures.AP
-# from pyterrier.measures import RR, nDCG, P, R, AP
 
 from private_obfuscation.retrievers import get_retriever, get_dataset
+from private_obfuscation.helpers_more import do_save_dicts, create_exp_dir
+from private_obfuscation.paths import PODATADIR
+from private_obfuscation.helpers_llms import refs_types, dp_refs
+from private_obfuscation.reformulators import reformulate_queries
 
 reformulation_types = [
     'none',
@@ -34,7 +28,8 @@ reformulation_types = [
 ]
 retrievers = [
     'bm25',
-    # 'colbert'
+    'colbert',
+    'monoT5',
 ]
 
 ds = [
@@ -53,9 +48,8 @@ ds = [
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reformulation", type=str, default="wordnet", choices=reformulation_types)
-    parser.add_argument("--retriever", type=str, default="bm25", choices=retrievers)
-    parser.add_argument("--dataset_name", type=str, default="irds:beir/scifact/test")
-    parser.add_argument("--notes", type=str, default="")
+    parser.add_argument("--retriever", type=str, default="monoT5", choices=retrievers)
+    parser.add_argument("--dataset_name", type=str, default="irds:beir/nfcorpus/test")
     args = parser.parse_args()
 
     return args
@@ -68,13 +62,13 @@ def main(args):
     results = {}
 
     # Load a dataset (use any small available dataset)
-    index, topics, qrels = get_dataset(args.dataset_name)
+    topics, qrels, index, indexref, dataset = get_dataset(args.dataset_name)
 
     print('Reformulating queries...')
     topics = reformulate_queries(topics, args.reformulation, dataset_name=args.dataset_name)
 
     print('Getting retriever...')
-    retrievers = get_retriever(args.dataset_name, args.retriever, index=index)
+    retrievers = get_retriever(args.dataset_name, args.retriever, index=index, indexref=indexref, dataset=dataset)
 
     # Optionally, evaluate the results if you have qrels (ground truth)
     experiment = pt.Experiment(
@@ -106,7 +100,6 @@ def main(args):
 
 
 def loop_all_over_reformulations():
-
     # save the args of the experiments already run, so I don't run them again
     done_experiments = []
     path = os.path.join(PODATADIR, 'done_experiments.json')
@@ -117,7 +110,7 @@ def loop_all_over_reformulations():
         with open(path, 'w') as f:
             json.dump(done_experiments, f)
 
-    retrivs = ['bm25']
+    retrivs = ['colbert']
     i = 0
     for dataset_name in ds:
         for reformulation in reformulation_types:
@@ -125,7 +118,8 @@ def loop_all_over_reformulations():
                 i += 1
                 print(f'{i}/{len(ds) * len(reformulation_types) * len(retrivs)}')
 
-                if any([d['reformulation'] == reformulation and d['retriever'] == retriever and d['dataset_name'] == dataset_name for d in done_experiments]):
+                if any([d['reformulation'] == reformulation and d['retriever'] == retriever and d[
+                    'dataset_name'] == dataset_name for d in done_experiments]):
                     print('Already done')
                     continue
 
@@ -147,7 +141,7 @@ def loop_all_over_reformulations():
 
 
 if __name__ == "__main__":
-    # args = parse_args()
-    # main(args)
+    args = parse_args()
+    main(args)
 
-    loop_all_over_reformulations()
+    # loop_all_over_reformulations()

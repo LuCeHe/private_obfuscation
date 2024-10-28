@@ -7,7 +7,7 @@ from private_obfuscation.paths import DATADIR
 
 
 def get_colbert_e2e(dataset):
-    pt.init()
+    # pt.init()
 
     import pyterrier_colbert.indexing
     import pyterrier_colbert as pycolbert
@@ -20,7 +20,7 @@ def get_colbert_e2e(dataset):
     checkpoint = "http://www.dcs.gla.ac.uk/~craigm/colbert.dnn.zip"
 
     indexer = pycolbert.indexing.ColBERTIndexer(checkpoint, "/content", "colbertindex", chunksize=3)
-    indexer.index(pt.get_dataset('irds:' + dataset).get_corpus_iter())
+    indexer.index(pt.get_dataset(dataset).get_corpus_iter())
 
     pyterrier_colbert_factory = indexer.ranking_factory()
 
@@ -28,7 +28,7 @@ def get_colbert_e2e(dataset):
     return colbert_e2e
 
 
-def get_retriever(dataset_name, retriever, index=None):
+def get_retriever(dataset_name, retriever, index=None, indexref=None, dataset=None):
     """
     Returns the specified retriever for the given dataset.
 
@@ -46,6 +46,20 @@ def get_retriever(dataset_name, retriever, index=None):
 
     elif retriever == "faiss":
         raise NotImplementedError("FAISS retriever is not functional yet.")
+
+    elif retriever == "monoT5":
+        from pyterrier_t5 import MonoT5ReRanker, DuoT5ReRanker
+        monoT5 = MonoT5ReRanker()
+
+        DPH_br = pt.terrier.Retriever(index, wmodel="DPH") % 100
+        DPH = pt.terrier.Retriever(index, wmodel="DPH")
+        BM25_br = pt.terrier.Retriever(index, wmodel="BM25") % 100
+        BM25 = pt.terrier.Retriever(index, wmodel="BM25")
+
+        bm25 = pt.BatchRetrieve(indexref, wmodel="BM25") % 100
+        mono_pipeline = bm25 >> pt.text.get_text(dataset, "text") >> monoT5
+
+        retrievers = [DPH_br, DPH, BM25_br, BM25, mono_pipeline]
 
     elif retriever == "colbert":
         # Initialize ColBERT retriever using the dataset documents
@@ -84,7 +98,10 @@ nice_ds += bigger_ds
 
 
 def get_dataset(dataset_name):
-    fields = ('text',)
+    if 'msmarco-doc' in dataset_name:
+        fields = ('url', 'title', 'body')
+    else:
+        fields = ('text',)
     topics_arg = 'text' if not 'trec-dl-' in dataset_name else None
 
     # unsure: irds:beir/quora/test
@@ -100,20 +117,12 @@ def get_dataset(dataset_name):
     if not os.path.exists(os.path.join(index_path, 'data.properties')):
         print(f"Creating index for dataset: {dataset_name}")
 
-        # if 'msmarco-doc' in dataset_name:
-        #     print('here?')
-        #     indexer = pt.TRECCollectionIndexer(index_path)
-        #     corpus = dataset.get_corpus()
-        # else:
         indexer = pt.IterDictIndexer(index_path, meta={'docno': 39}, verbose=True, overwrite=False)
         corpus = dataset.get_corpus_iter()
 
         print(f"Indexing dataset: {dataset_name}")
-        # indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
-        indexref = indexer.index(corpus)
+        indexref = indexer.index(corpus, fields=fields)
     else:
-        if not pt.started():
-            pt.init()
         print(f"Loading index for dataset ({dataset_name}): {index_path}")
         indexref = pt.IndexRef.of(os.path.join(index_path, 'data.properties'))
 
@@ -123,7 +132,7 @@ def get_dataset(dataset_name):
     print(f"Loading topics and qrels for dataset: {dataset_name}")
     topics = dataset.get_topics(topics_arg)
     qrels = dataset.get_qrels()
-    return index, topics, qrels
+    return topics, qrels, index, indexref, dataset
 
 
 def tests_with_bair(dataset_name):

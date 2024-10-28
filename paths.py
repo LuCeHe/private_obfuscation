@@ -7,5 +7,7 @@ EXPSDIR = os.path.abspath(os.path.join(WORKDIR, "experiments"))
 PODATADIR = os.path.abspath(os.path.join(DATADIR, "private_obfuscation"))
 LOCAL_DATADIR = os.path.abspath(os.path.join(CDIR, "local_data"))
 os.makedirs(DATADIR, exist_ok=True)
+os.makedirs(EXPSDIR, exist_ok=True)
+os.makedirs(PODATADIR, exist_ok=True)
 
 
