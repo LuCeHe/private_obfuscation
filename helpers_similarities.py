@@ -174,14 +174,15 @@ class SimilaritiesCalculator():
         elif metric_name in ['jaccard', 'tfidfcosine', 'inter']:
             ps = PorterStemmer()
             kwargs = {'ps': ps}
-            self.get_similarity = lambda sentences: reformulation_similarity(sentences, distance_type=metric_name,
-                                                                             kwargs=kwargs)
+            self.get_similarity = lambda sentences: reformulation_similarity(
+                sentences, distance_type=metric_name, kwargs=kwargs
+            )
 
         else:
             raise ValueError(f"Invalid metric name: {metric_name}")
 
 
-def test_similarities_measurer():
+def get_all_similarites_from_reformulations():
     import json
 
     # save the args of the experiments already run, so I don't run them again
@@ -202,11 +203,14 @@ def test_similarities_measurer():
         'inter': SimilaritiesCalculator('inter'),
     }
 
-    dirs = [d for d in os.listdir(PODATADIR) if 'reformulations' in d and 'gpt' in d and not 'original' in d]
-    print(dirs)
+    dirs = [
+        d for d in os.listdir(PODATADIR)
+        if 'reformulations' in d
+           and not 'original' in d
+           and not '_tmp_' in d
 
-    # d = dirs[0]
-    # d = 'reformulations_gpt-3p5-turbo_irds-beir-nfcorpus-test_promptM3k5.txt'
+    ]
+    print(dirs)
 
     for d in dirs:
         if d in done_similarities:
@@ -216,7 +220,7 @@ def test_similarities_measurer():
 
         print(f'Loading reformulations from {d}...')
 
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             reformulations = eval(f.read())
 
         sims = {k: [] for k in sim_calculators.keys()}
@@ -240,4 +244,4 @@ def test_similarities_measurer():
 
 
 if __name__ == '__main__':
-    test_similarities_measurer()
+    get_all_similarites_from_reformulations()

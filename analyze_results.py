@@ -5,11 +5,12 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
+import numpy as np
 import pandas as pd
-from private_obfuscation.paths import EXPSDIR
+from private_obfuscation.paths import EXPSDIR, PODATADIR
+from private_obfuscation.reformulators import get_reformulation_name
 
 dirs = [d for d in os.listdir(EXPSDIR) if 'zip' in d and 'reformulators' in d]
-print(dirs)
 
 unzipped = []
 for d in dirs:
@@ -20,9 +21,11 @@ for d in dirs:
     else:
         unzipped.append(d.replace('.zip', ''))
 
-print('experiments done:', len(unzipped))
 
-# d = unzipped[0]
+simpath = os.path.join(PODATADIR, 'done_similarities.json')
+with open(simpath, 'r') as f:
+    done_similarities = json.load(f)
+print('sim keys', done_similarities.keys())
 
 exp_dicts = []
 for d in unzipped:
@@ -38,6 +41,20 @@ for d in unzipped:
         v = v.replace('RankCutoff(', '').replace('TerrierRetr(', '')
         exp_dict['name'][k] = v.replace(', 100)', '%100').replace(')', '')
         retriever_indices.append(k)
+
+    rt = exp_dict['reformulation']
+    model_name = 'gpt-3.5-turbo' if 'chatgpt3p5' in rt else 'diffpriv'
+    model_name = model_name if not rt == 'wordnet' else 'wordnet'
+
+    filename_reformulations = get_reformulation_name(
+        model_name, exp_dict['dataset_name'], rt.replace('chatgpt3p5_', '')
+    ) if not rt == 'none' else 'original'
+
+    sims = done_similarities[filename_reformulations] if not rt == 'none' else {}
+    for k, v in sims.items():
+        k_ = f'{k}_similarity'.replace('inter', 'szymkiewicz')
+        exp_dict[f'mean_{k_}'] = np.mean(v)
+        exp_dict[f'std_{k_}'] = np.std(v)
 
     metric_names = [k for k in exp_dict.keys() if isinstance(exp_dict[k], dict) and not k == 'name']
 
@@ -56,3 +73,8 @@ print(len(exp_dicts))
 df = pd.DataFrame(exp_dicts)
 print(df.to_string())
 print(df.shape)
+
+
+# save pandas
+pandas_path = os.path.join(PODATADIR, 'results.csv')
+df.to_csv(pandas_path, index=False)

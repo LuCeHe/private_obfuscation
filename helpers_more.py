@@ -1,8 +1,8 @@
-
 import json, os, time, string, random
 import numpy as np
 
 from private_obfuscation.paths import DATADIR, EXPSDIR
+
 
 class NumpyEncoder(json.JSONEncoder):
     """ Custom encoder for numpy data types """
@@ -85,3 +85,44 @@ def create_exp_dir():
     EXPDIR = os.path.join(EXPSDIR, time_string + random_string + '_reformulators')
     os.makedirs(EXPDIR, exist_ok=True)
     return EXPDIR
+
+
+def create_fake_plots():
+    datasets = {'WordNet': 'b', 'ChatGPT': 'orange', 'DiffPriv': 'g'}
+    import matplotlib.pyplot as plt
+
+    # 3 subplots horizontally
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+    std = .3
+    for ax in axs:
+        for d, c in datasets.items():
+            mean = np.random.rand(2)
+            N = 50 if 'GPT' in d else 3 if 'Word' in d else 20
+            x = mean[0] + std * np.random.rand(N)
+            y = mean[1] + std * np.random.rand(N)
+            ax.scatter(x, y, c=c, label=d)
+
+    ax.legend()
+
+    axs[0].set_xlabel('semantic\nsimilarity')
+    axs[0].set_ylabel('bm25 MAP')
+
+    axs[1].set_xlabel('privacy\nprotection')
+    axs[1].set_ylabel('bm25 MAP')
+
+    axs[2].set_xlabel('semantic\nsimilarity')
+    axs[2].set_ylabel('syntacticsimilarity')
+
+    # remove axis
+    for ax in axs:
+        for pos in ['right', 'left', 'bottom', 'top']:
+            ax.spines[pos].set_visible(False)
+
+    plt.show()
+
+
+if __name__ == "__main__":
+    # download_nltks()
+    # create_exp_dir()
+    create_fake_plots()
+    print('Done')
