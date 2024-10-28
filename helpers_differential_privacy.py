@@ -333,11 +333,21 @@ def obfuscate_text(text, mechanism, glove_embeddings):
     obfuscated_sentence = detokenizer.detokenize(obfuscated_words)
     return obfuscated_sentence
 
+
 def use_diffpriv_glove(
         reformulation_type='vikcmp_e1',
         queries=["What is the capital of France?", "What is the capital of Germany?"],
         extra_args=None
 ):
+    import string, random, time
+    named_tuple = time.localtime()  # get struct_time
+    time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
+
+    characters = string.ascii_letters + string.digits
+    random_string = ''.join(random.choice(characters) for i in range(5))
+
+    tmppath = os.path.join(PODATADIR, time_string + random_string + f'_{reformulation_type}_tmp_reformulations.txt')
+
     if not extra_args is None and 'glove_embeddings' in extra_args:
         glove_embeddings = extra_args['glove_embeddings']
     else:
@@ -361,13 +371,16 @@ def use_diffpriv_glove(
     else:
         raise ValueError(f"Unknown mechanism type: {reformulation_type}")
 
-    obfuscations = []
     print(f"Generating responses with Differential Privacy ({reformulation_type})...")
-    for query in tqdm(queries):
-        obfuscated_query = obfuscate_text(query, mech, glove_embeddings)
+    with open(tmppath, 'w', encoding='utf-8') as f:
+        for query in tqdm(queries):
+            obfuscated_query = obfuscate_text(query, mech, glove_embeddings)
+            f.write(f"{query}###DIVIDEUNLIKELY####{obfuscated_query}\n")
 
-        print(obfuscated_query)
-        obfuscations.append(obfuscated_query)
+    with open(tmppath, 'r', encoding='utf-8') as f:
+        obfuscations = f.readlines()
+
+    obfuscations = [line.strip().split('###DIVIDEUNLIKELY####')[1] for line in obfuscations]
 
     pairs = {query: obfuscated_query for query, obfuscated_query in zip(queries, obfuscations)}
     return pairs
@@ -409,8 +422,13 @@ def test_diffpriv():
 
 
 if __name__ == "__main__":
-    # test_diffpriv()
-    # load_glove_model_42B()
-    glove_model = load_glove_model_42B_gensim()
-    print('cat')
-    print(glove_model['cat'])
+    glove_version = 'glove-twitter-25'  # '42B' 'glove-twitter-25'
+    glove_embeddings = load_glove_embeddings(glove_version)
+    refs = use_diffpriv_glove(
+        'vikcmp_e1',
+        ["What is the capital of France?", "What is the capital of Germany?"],
+        extra_args={'glove_embeddings': glove_embeddings}
+    )
+    print(refs)
+
+
