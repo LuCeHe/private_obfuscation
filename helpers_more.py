@@ -53,8 +53,8 @@ def download_nltks():
         'punkt',
         'averaged_perceptron_tagger',
         'universal_tagset',
-        'punkt_tab',
-        'averaged_perceptron_tagger_eng',
+        # 'punkt_tab',
+        # 'averaged_perceptron_tagger_eng',
     ]
 
     for d in packages:
