@@ -5,17 +5,10 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.helpers_more import do_save_dicts
+from private_obfuscation.helpers_more import do_save_dicts, create_exp_dir
 from private_obfuscation.paths import EXPSDIR, PODATADIR
 from private_obfuscation.helpers_llms import refs_types, dp_refs
 
-named_tuple = time.localtime()  # get struct_time
-time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
-
-characters = string.ascii_letters + string.digits
-random_string = ''.join(random.choice(characters) for i in range(5))
-EXPDIR = os.path.join(EXPSDIR, time_string + random_string + '_reformulators')
-os.makedirs(EXPDIR, exist_ok=True)
 
 from private_obfuscation.reformulators import reformulate_queries
 
@@ -46,14 +39,14 @@ retrievers = [
 
 ds = [
     # 'irds:vaswani',
-    # 'irds:beir/nfcorpus/test',
-    # 'irds:beir/scifact/test',
-    # 'irds:beir/trec-covid',
-    # 'irds:beir/webis-touche2020/v2',
+    'irds:beir/nfcorpus/test',
+    'irds:beir/scifact/test',
+    'irds:beir/trec-covid',
+    'irds:beir/webis-touche2020/v2',
     # 'irds:beir/arguana',
-    # 'irds:msmarco-document/trec-dl-2019',
-    # 'irds:msmarco-document/trec-dl-2020',
-    'irds:msmarco-document/trec-dl-2020/judged',
+    'irds:msmarco-document/trec-dl-2019',
+    'irds:msmarco-document/trec-dl-2020',
+    # 'irds:msmarco-document/trec-dl-2020/judged',
 ]
 
 
@@ -69,6 +62,7 @@ def parse_args():
 
 
 def main(args):
+    EXPDIR = create_exp_dir()
     start_time = time.time()
     print(json.dumps(args.__dict__, indent=2))
     results = {}
@@ -135,8 +129,8 @@ def loop_all_over_reformulations():
                     print('Already done')
                     continue
 
-                # try:
-                if True:
+                try:
+                    # if True:
                     args = argparse.Namespace(
                         reformulation=reformulation, retriever=retriever, dataset_name=dataset_name
                     )
@@ -147,9 +141,9 @@ def loop_all_over_reformulations():
                     with open(path, 'w') as f:
                         json.dump(done_experiments, f)
 
-                # except Exception as e:
-                #     print('Error:', e)
-                #     continue
+                except Exception as e:
+                    print('Error:', e)
+                    continue
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 
-import json, os
+import json, os, time, string, random
 import numpy as np
 
-from private_obfuscation.paths import DATADIR
+from private_obfuscation.paths import DATADIR, EXPSDIR
 
 class NumpyEncoder(json.JSONEncoder):
     """ Custom encoder for numpy data types """
@@ -74,3 +74,14 @@ def download_nltks():
         except LookupError:
             print(f"{d} tokenizer not found. Downloading...")
             nltk.download(d, download_dir=nltk_data_path)
+
+
+def create_exp_dir():
+    named_tuple = time.localtime()  # get struct_time
+    time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
+
+    characters = string.ascii_letters + string.digits
+    random_string = ''.join(random.choice(characters) for i in range(5))
+    EXPDIR = os.path.join(EXPSDIR, time_string + random_string + '_reformulators')
+    os.makedirs(EXPDIR, exist_ok=True)
+    return EXPDIR
