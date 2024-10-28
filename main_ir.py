@@ -14,11 +14,11 @@ RR, nDCG, P, R, AP = pt.measures.RR, pt.measures.nDCG, pt.measures.P, pt.measure
 
 from private_obfuscation.retrievers import get_retriever, get_dataset
 from private_obfuscation.helpers_more import do_save_dicts, create_exp_dir
-from private_obfuscation.paths import PODATADIR
+from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR
 from private_obfuscation.helpers_llms import refs_types, dp_refs
 from private_obfuscation.reformulators import reformulate_queries
 
-reformulation_types = [
+all_reformulation_types = [
     'none',
     # 'random_char',
     # 'chatgpt_improve',
@@ -26,13 +26,13 @@ reformulation_types = [
     *dp_refs,
     'wordnet',
 ]
-retrievers = [
+all_retrievers = [
     'bm25',
-    'colbert',
+    # 'colbert',
     'monoT5',
 ]
 
-ds = [
+all_ds = [
     # 'irds:vaswani',
     'irds:beir/nfcorpus/test',
     'irds:beir/scifact/test',
@@ -47,10 +47,10 @@ ds = [
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--reformulation", type=str, default="wordnet", choices=reformulation_types)
-    parser.add_argument("--retriever", type=str, default="monoT5", choices=retrievers)
-    parser.add_argument("--dataset_name", type=str, default="irds:beir/nfcorpus/test")
-    parser.add_argument("--notes", type=str, default="")
+    parser.add_argument("--reformulation", type=str, default="wordnet", choices=all_reformulation_types)
+    parser.add_argument("--retriever", type=str, default="monoT5", choices=all_retrievers)
+    parser.add_argument("--dataset_name", type=str, default="irds:beir/nfcorpus/test", choices=all_ds)
+    parser.add_argument("--notes", type=str, default="loop")
     args = parser.parse_args()
 
     return args
@@ -102,49 +102,52 @@ def main(args):
 
 def loop_all_over_reformulations():
     # save the args of the experiments already run, so I don't run them again
-    done_experiments = []
-    path = os.path.join(PODATADIR, 'done_experiments.json')
+    missing_experiments = []
+    path = os.path.join(LOCAL_DATADIR, 'missing_experiments.json')
     if os.path.exists(path):
         with open(path, 'r') as f:
-            done_experiments = json.load(f)
+            missing_experiments = json.load(f)
     else:
         with open(path, 'w') as f:
-            json.dump(done_experiments, f)
+            json.dump(missing_experiments, f)
 
     retrivs = ['monoT5']
     i = 0
-    for dataset_name in ds:
-        for reformulation in reformulation_types:
+    missing_i = 0
+    for dataset_name in all_ds:
+        for reformulation in all_reformulation_types:
             for retriever in retrivs:
                 i += 1
-                print(f'{i}/{len(ds) * len(reformulation_types) * len(retrivs)}')
+                print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
-                if any([d['reformulation'] == reformulation and d['retriever'] == retriever and d[
-                    'dataset_name'] == dataset_name for d in done_experiments]):
+                if not any([d['reformulation'] == reformulation and d['retriever'] == retriever and d[
+                    'dataset_name'] == dataset_name for d in missing_experiments]):
                     print('Already done')
                     continue
 
+                missing_i += 1
                 try:
                     # if True:
                     args = argparse.Namespace(
                         reformulation=reformulation, retriever=retriever, dataset_name=dataset_name
                     )
-                    main(args)
+                    # main(args)
 
-                    print('Saving experiment as done')
-                    done_experiments.append(args.__dict__)
-                    with open(path, 'w') as f:
-                        json.dump(done_experiments, f)
+                    # print('Saving experiment as done')
+                    # done_experiments.append(args.__dict__)
+                    # with open(path, 'w') as f:
+                    #     json.dump(done_experiments, f)
 
                 except Exception as e:
                     print('Error:', e)
                     continue
 
+    print(f'Number of missing experiments: {missing_i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
 if __name__ == "__main__":
     args = parse_args()
 
-    if args.notes == 'loop':
+    if 'loop' in args.notes:
         loop_all_over_reformulations()
     else:
         main(args)
