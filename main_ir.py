@@ -48,9 +48,9 @@ all_ds = [
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reformulation", type=str, default="wordnet", choices=all_reformulation_types)
-    parser.add_argument("--retriever", type=str, default="monoT5", choices=all_retrievers)
-    parser.add_argument("--dataset_name", type=str, default="irds:beir/nfcorpus/test", choices=all_ds)
-    parser.add_argument("--notes", type=str, default="loop")
+    parser.add_argument("--retriever", type=str, default="bm25", choices=all_retrievers)
+    parser.add_argument("--dataset_name", type=str, default="irds:msmarco-document/trec-dl-2020", choices=all_ds)
+    parser.add_argument("--notes", type=str, default="")
     args = parser.parse_args()
 
     return args
@@ -112,6 +112,8 @@ def loop_all_over_reformulations():
             json.dump(missing_experiments, f)
 
     retrivs = ['monoT5']
+    retrivs = ['bm25']
+    all_ds = ['irds:msmarco-document/trec-dl-2020']
     i = 0
     missing_i = 0
     for dataset_name in all_ds:
@@ -120,10 +122,10 @@ def loop_all_over_reformulations():
                 i += 1
                 print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
-                if not any([d['reformulation'] == reformulation and d['retriever'] == retriever and d[
-                    'dataset_name'] == dataset_name for d in missing_experiments]):
-                    print('Already done')
-                    continue
+                # if not any([d['reformulation'] == reformulation and d['retriever'] == retriever and d[
+                #     'dataset_name'] == dataset_name for d in missing_experiments]):
+                #     print('Already done')
+                #     continue
 
                 missing_i += 1
                 try:
@@ -131,7 +133,7 @@ def loop_all_over_reformulations():
                     args = argparse.Namespace(
                         reformulation=reformulation, retriever=retriever, dataset_name=dataset_name
                     )
-                    # main(args)
+                    main(args)
 
                     # print('Saving experiment as done')
                     # done_experiments.append(args.__dict__)
@@ -142,7 +144,7 @@ def loop_all_over_reformulations():
                     print('Error:', e)
                     continue
 
-    print(f'Number of missing experiments: {missing_i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
+    # print(f'Number of missing experiments: {missing_i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
 if __name__ == "__main__":
     args = parse_args()
