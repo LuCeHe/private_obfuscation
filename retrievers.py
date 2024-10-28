@@ -3,7 +3,6 @@ from sentence_transformers import SentenceTransformer
 
 import pyterrier as pt
 
-
 from private_obfuscation.paths import DATADIR
 
 
@@ -68,6 +67,8 @@ bigger_ds = [
     'irds:beir/dbpedia-entity/dev', 'irds:beir/dbpedia-entity/test',
     'irds:msmarco-document/trec-dl-2019',
     'irds:msmarco-document/trec-dl-2020',
+    'irds:msmarco-document/trec-dl-2019/judged',
+    'irds:msmarco-document/trec-dl-2020/judged',
     'irds:msmarco-passage/eval',
     'irds:beir/fever/dev', 'irds:beir/fever/test',
 ]
@@ -83,9 +84,8 @@ nice_ds += bigger_ds
 
 
 def get_dataset(dataset_name):
-
     fields = ('text',)
-    topics_arg = 'text'
+    topics_arg = 'text' if not 'trec-dl-' in dataset_name else None
 
     # unsure: irds:beir/quora/test
     assert dataset_name in nice_ds, f"Dataset name must be one of {nice_ds}"
@@ -97,19 +97,25 @@ def get_dataset(dataset_name):
     dataset = pt.datasets.get_dataset(dataset_name)
     index_path = os.path.join(DATADIR, 'pyterrier-indices', index_name)
 
-
     if not os.path.exists(os.path.join(index_path, 'data.properties')):
         print(f"Creating index for dataset: {dataset_name}")
-        indexer = pt.index.IterDictIndexer(index_path, meta={'docno': 39}, verbose=True, overwrite=False)
+
+        # if 'msmarco-doc' in dataset_name:
+        #     print('here?')
+        #     indexer = pt.TRECCollectionIndexer(index_path)
+        #     corpus = dataset.get_corpus()
+        # else:
+        indexer = pt.IterDictIndexer(index_path, meta={'docno': 39}, verbose=True, overwrite=False)
+        corpus = dataset.get_corpus_iter()
 
         print(f"Indexing dataset: {dataset_name}")
-        indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
+        # indexref = indexer.index(dataset.get_corpus_iter(), fields=fields)
+        indexref = indexer.index(corpus)
     else:
         if not pt.started():
             pt.init()
         print(f"Loading index for dataset ({dataset_name}): {index_path}")
         indexref = pt.IndexRef.of(os.path.join(index_path, 'data.properties'))
-
 
     print(f"Loading index: {index_name}")
     index = pt.IndexFactory.of(indexref)

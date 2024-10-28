@@ -46,13 +46,14 @@ retrievers = [
 
 ds = [
     # 'irds:vaswani',
-    'irds:beir/nfcorpus/test',
-    'irds:beir/scifact/test',
-    'irds:beir/trec-covid',
-    'irds:beir/webis-touche2020/v2',
+    # 'irds:beir/nfcorpus/test',
+    # 'irds:beir/scifact/test',
+    # 'irds:beir/trec-covid',
+    # 'irds:beir/webis-touche2020/v2',
     # 'irds:beir/arguana',
-    'irds:msmarco-document/trec-dl-2019',
-    'irds:msmarco-document/trec-dl-2020',
+    # 'irds:msmarco-document/trec-dl-2019',
+    # 'irds:msmarco-document/trec-dl-2020',
+    'irds:msmarco-document/trec-dl-2020/judged',
 ]
 
 
@@ -134,8 +135,8 @@ def loop_all_over_reformulations():
                     print('Already done')
                     continue
 
-                try:
-                    # if True:
+                # try:
+                if True:
                     args = argparse.Namespace(
                         reformulation=reformulation, retriever=retriever, dataset_name=dataset_name
                     )
@@ -146,9 +147,9 @@ def loop_all_over_reformulations():
                     with open(path, 'w') as f:
                         json.dump(done_experiments, f)
 
-                except Exception as e:
-                    print('Error:', e)
-                    continue
+                # except Exception as e:
+                #     print('Error:', e)
+                #     continue
 
 
 if __name__ == "__main__":
