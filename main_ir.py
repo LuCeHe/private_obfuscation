@@ -112,8 +112,8 @@ def loop_all_over_reformulations():
             json.dump(missing_experiments, f)
 
     retrivs = ['monoT5']
-    retrivs = ['bm25']
-    all_ds = ['irds:msmarco-document/trec-dl-2020']
+    # retrivs = ['bm25']
+    # all_ds = ['irds:msmarco-document/trec-dl-2020']
     i = 0
     missing_i = 0
     for dataset_name in all_ds:
@@ -122,10 +122,10 @@ def loop_all_over_reformulations():
                 i += 1
                 print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
-                # if not any([d['reformulation'] == reformulation and d['retriever'] == retriever and d[
-                #     'dataset_name'] == dataset_name for d in missing_experiments]):
-                #     print('Already done')
-                #     continue
+                if not any([d['reformulation'] == reformulation and d['retriever'] == retriever and d[
+                    'dataset_name'] == dataset_name for d in missing_experiments]):
+                    print('Already done')
+                    continue
 
                 missing_i += 1
                 try:
