@@ -85,6 +85,7 @@ class MahalanobisMechanism(AbstractMechanism):
         Z = X * Y
         return Z
 
+
 def vickrey_get_protected_vectors(self, embeddings):
     n_words = len(embeddings)
     noisy_embeddings = []
@@ -123,24 +124,7 @@ class VickreyMMechanism(MahalanobisMechanism):
         self.lam = kwargs.get('lambda', 0.75)
 
     def get_protected_vectors(self, embeddings):
-        n_words = len(embeddings)
-        noisy_embeddings = []
-        for e in embeddings:
-            noisy_embeddings.append(e + self.noise_sampling())
-
-        noisy_embeddings = np.array(noisy_embeddings)
-        distance = euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
-
-        closest = np.argpartition(distance, 2, axis=1)[:, :2]
-        dist_to_closest = distance[np.tile(np.arange(n_words).reshape(-1, 1), 2), closest]
-
-        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (
-                self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
-
-        vickrey_choice = np.array([npr.choice(2, p=[p[w], 1 - p[w]]) for w in range(n_words)])
-        noisy_embeddings = self.emb_matrix[closest[np.arange(n_words), vickrey_choice]]
-
-        return noisy_embeddings
+        return vickrey_get_protected_vectors(self, embeddings)
 
 
 # VKCM class
@@ -150,25 +134,7 @@ class VickreyCMPMechanism(MahalanobisMechanism):
         self.cmp_mechanism = CMPMechanism(m, epsilon)
 
     def get_protected_vectors(self, embeddings):
-        n_words = len(embeddings)
-
-        noisy_embeddings = []
-        for e in embeddings:
-            noise = self.cmp_mechanism.noise_sampling()
-            noisy_embeddings.append(e + noise)
-        noisy_embeddings = np.array(noisy_embeddings)
-
-        distance = euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
-        closest = np.argpartition(distance, 2, axis=1)[:, :2]
-        dist_to_closest = distance[np.tile(np.arange(n_words).reshape(-1, 1), 2), closest]
-
-        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (
-                self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
-
-        vickrey_choice = np.array([npr.choice(2, p=[p[w], 1 - p[w]]) for w in range(n_words)])
-        noisy_embeddings = self.emb_matrix[closest[np.arange(n_words), vickrey_choice]]
-
-        return noisy_embeddings
+        return vickrey_get_protected_vectors(self, embeddings)
 
 
 # synthetic data generation based on embedding matrix
@@ -434,7 +400,30 @@ def test_diffpriv():
             print(f"{mech_name} - Jaccard: {jaccard_sim:.4f}, Semantic: {semantic_sim:.4f}")
 
 
-if __name__ == "__main__":
+def test_vickrey():
+    epsilon = 500
+    vocab = 20
+    n_words = 5
+    e_dim = 4
+
+    mock_glove = np.random.rand(vocab, e_dim)
+    mechanism = VickreyMechanism(m=e_dim, epsilon=epsilon, embeddings=mock_glove)
+
+    embeddings = [npr.randn(e_dim) for _ in range(n_words)]
+    print('Embeddings:', embeddings)
+
+    protected_embeddings = [mechanism.get_protected_vectors(e[None]) for e in embeddings]
+    print('Protected embeddings:', protected_embeddings)
+
+
+    embeddings = np.array(embeddings)
+    print('embeddings.shape: ', embeddings.shape)
+
+    protected_embeddings = mechanism.get_protected_vectors(embeddings)
+    print('Protected embeddings:', protected_embeddings)
+
+
+def test_use_diffpriv():
     glove_version = 'glove-twitter-25'  # '42B' 'glove-twitter-25'
     glove_embeddings = load_glove_embeddings(glove_version)
     refs = use_diffpriv_glove(
@@ -447,3 +436,9 @@ if __name__ == "__main__":
         extra_args={'glove_embeddings': glove_embeddings}
     )
     print(refs)
+
+if __name__ == "__main__":
+    # test_use_diffpriv()
+    test_vickrey()
+
+    pass
