@@ -81,7 +81,7 @@ def loop_all_over_reformulations(notes):
 
     frac = None
     if 'oneof:' in notes:
-        frac = notes.split('oneof:')[1].split('/')
+        frac = [int(i) for i in notes.split('oneof:')[1].split('/')]
 
     # save the args of the experiments already run, so I don't run them again
     missing_experiments = []

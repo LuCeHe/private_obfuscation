@@ -58,6 +58,7 @@ refs = [
 
 
 def bold_and_underline(table, metrics_oi, prefix_metric=''):
+    table = table.round(3)
     pm = prefix_metric
 
     # split the table between rows to skip and those to treat
@@ -77,7 +78,8 @@ def bold_and_underline(table, metrics_oi, prefix_metric=''):
         )
         # underlined
         table[f'{pm}{m}'] = table[f'{pm}{m}'].apply(
-            lambda x: f'\\underline{{{x}}}' if str(x) == str(second_best_metric) else x
+            lambda x: f'\\underline{{{x}}}' if str(x) == str(second_best_metric)
+            else f'{float(x):.3f}' if isinstance(x, float) else x
         )
 
         # table[f'{pm}{m}'] = table[f'{pm}{m}'].apply(lambda x: x)
@@ -100,16 +102,16 @@ def create_table(df, refs, datasets_oi, metrics_oi):
     for ref in refs:
         row = [ref]
         for dataset in datasets_oi:
-            # dsdf = sdf[(sdf['dataset_name'] == dataset)]
-            # dsdf = bold_and_underline(dsdf, metrics_oi)
+            dsdf = sdf[(sdf['dataset_name'] == dataset)]
+            dsdf = bold_and_underline(dsdf, metrics_oi)
             # print(dsdf.head())
 
             for metric in metrics_oi:
-                mask = ((sdf['dataset_name'].eq(dataset)) & (sdf['reformulation'].eq(ref)))
-                # print(ref, dataset, metric)
-                v = sdf[mask][metric].values
-                v = f'{v[0]:.3f}' if len(v) > 0 else '-'
-                # print(ref, dataset, metric, sdf[mask][metric].values)
+                mask = dsdf['reformulation'].eq(ref)
+                v = dsdf[mask][metric].values
+                # v = f'{v[0]:.3f}' if len(v) > 0 else '-'
+                v = v[0] if len(v) > 0 else '-'
+
                 row.append(v)
         rows.append(row)
 
@@ -137,9 +139,6 @@ def create_table(df, refs, datasets_oi, metrics_oi):
     latex = latex.replace('chatgpt3p5_prompt', 'GPT p')
     latex = latex.replace('wordnet', 'WordNet')
     latex = latex.replace('reformulator', '\\textbf{reformulator}')
-
-
-    # \makecell{Some really \\ longer text}
 
     metrics_with_at = [m for m in metrics_oi if '@' in m]
     for m in metrics_with_at:
