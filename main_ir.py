@@ -132,8 +132,12 @@ def loop_all_over_reformulations(notes):
                 i += 1
                 print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
-                if not any([d['reformulation'] == reformulation and d['retriever'] == retriever and d[
-                    'dataset_name'] == dataset_name for d in missing_experiments]):
+                if not any([
+                    d['reformulation'] == reformulation
+                    and d['retriever'] == retriever
+                    and d['dataset_name'] == dataset_name
+                    for d in missing_experiments[retriever]
+                ]):
                     print('Already done')
                     continue
 

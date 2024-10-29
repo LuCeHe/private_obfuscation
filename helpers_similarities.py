@@ -212,35 +212,45 @@ def get_all_similarites_from_reformulations():
     ]
     print(dirs)
 
-    for d in dirs:
+    np.random.shuffle(dirs)
+    for d in tqdm(dirs):
         if d in done_similarities:
             continue
 
         path = os.path.join(PODATADIR, d)
 
-        print(f'Loading reformulations from {d}...')
-
-        with open(path, 'r', encoding='utf-8') as f:
+        # print(f'Loading reformulations from {d}...')
+        with open(path, 'r', encoding='latin1') as f:
             reformulations = eval(f.read())
 
         sims = {k: [] for k in sim_calculators.keys()}
         i = 0
         for query, reformulated_query in reformulations.items():
-            for metric_name, sim_calculator in sim_calculators.items():
-                similarity = sim_calculator.get_similarity([query, reformulated_query])
-                sims[metric_name].append(similarity)
-            i += 1
-            if i > 10:
-                break
+            try:
+                for metric_name, sim_calculator in sim_calculators.items():
+                    similarity = sim_calculator.get_similarity([query, reformulated_query])
+                    sims[metric_name].append(similarity)
+                # i += 1
+                # if i > 2:
+                #     break
+            except Exception as e:
+                print('Error:', e)
+                continue
+
+        # for k, v in sims.items():
+        for k in sim_calculators.keys():
+            sims[f'mean_{k}'] = np.mean(sims[k])
+            sims[f'std_{k}'] = np.std(sims[k])
+            del sims[k]
 
         done_similarities[d] = sims
 
         with open(simpath, 'w') as f:
             json.dump(done_similarities, f, cls=NumpyEncoder)
 
-        print('d', d)
-        for metric_name, sims in sims.items():
-            print(f'{metric_name} mean: {np.mean(sims):.2f} std: {np.std(sims):.2f}')
+        # print('d', d)
+        # for k, v in sims.items():
+        #     print(f'{k}: {v:.2f}')
 
 
 if __name__ == '__main__':
