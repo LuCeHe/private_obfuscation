@@ -12,8 +12,10 @@ sys.path.append(WORKDIR)
 import pandas as pd
 from private_obfuscation.paths import PODATADIR
 
-metrics_oi_ = ['mean_bert_similarity', 'mean_jaccard_similarity', 'mean_szymkiewicz_similarity', 'map', 'nDCG@10',
-               'nDCG@100', 'P@10', 'P@100']
+metrics_oi_ = [
+    'mean_bert_similarity', 'mean_jaccard_similarity', 'mean_szymkiewicz_similarity', 'map', 'nDCG@10',
+    'nDCG@100'
+]
 # datasets_oi_ = ['irds:msmarco-document/trec-dl-2020', 'irds:beir/nfcorpus/test']
 
 # load csv
@@ -41,6 +43,7 @@ print(all_datasets)
 
 
 refs = [
+    'none',
     'wordnet',
     'cmp_e1', 'cmp_e5', 'cmp_e50',
     'mah_e1', 'mah_e5', 'mah_e50',
@@ -51,7 +54,6 @@ refs = [
     'chatgpt3p5_promptM1k1', 'chatgpt3p5_promptM1k3', 'chatgpt3p5_promptM1k5',
     'chatgpt3p5_promptM2k1', 'chatgpt3p5_promptM2k3', 'chatgpt3p5_promptM2k5',
     'chatgpt3p5_promptM3k1', 'chatgpt3p5_promptM3k3', 'chatgpt3p5_promptM3k5',
-    'none',
 ]
 
 
@@ -98,15 +100,17 @@ def create_table(df, refs, datasets_oi, metrics_oi):
     for ref in refs:
         row = [ref]
         for dataset in datasets_oi:
-            dsdf = sdf[(sdf['dataset_name'] == dataset)]
-            dsdf = bold_and_underline(dsdf, metrics_oi)
-            print(dsdf.head())
+            # dsdf = sdf[(sdf['dataset_name'] == dataset)]
+            # dsdf = bold_and_underline(dsdf, metrics_oi)
+            # print(dsdf.head())
 
             for metric in metrics_oi:
-                mask = (dsdf['reformulation'] == ref)
-                print(ref, dataset, metric)
-                print(dsdf[mask][metric].values[0])
-                row.append(f'{dsdf[mask][metric].values[0]}')
+                mask = ((sdf['dataset_name'].eq(dataset)) & (sdf['reformulation'].eq(ref)))
+                # print(ref, dataset, metric)
+                v = sdf[mask][metric].values
+                v = f'{v[0]:.3f}' if len(v) > 0 else '-'
+                # print(ref, dataset, metric, sdf[mask][metric].values)
+                row.append(v)
         rows.append(row)
 
     # to pandas and then to latex
@@ -134,6 +138,13 @@ def create_table(df, refs, datasets_oi, metrics_oi):
     latex = latex.replace('wordnet', 'WordNet')
     latex = latex.replace('reformulator', '\\textbf{reformulator}')
 
+
+    # \makecell{Some really \\ longer text}
+
+    metrics_with_at = [m for m in metrics_oi if '@' in m]
+    for m in metrics_with_at:
+        latex = latex.replace(m, f'\\makecell{{\\textbf{{{m.split("@")[0]}}} \\\\ \\textbf{{@{m.split("@")[1]}}} }}')
+
     for m in metrics_oi:
         latex = latex.replace(m, f'\\textbf{{{m}}}')
 
@@ -151,20 +162,32 @@ def create_table(df, refs, datasets_oi, metrics_oi):
     latex = latex.replace('mean_jaccard_similarity', 'Jacc')
     latex = latex.replace('mean_szymkiewicz_similarity', 'Szym')
     latex = latex.replace('map', 'MAP')
-    latex = latex.replace('}0', '0}').replace('vik\\textbf{', '\\textbf{vik')
+    latex = latex.replace('}0', '0}').replace('} 0', '0}').replace('vik\\textbf{', '\\textbf{vik')
+    latex = latex.replace('pM1', 'p4-').replace('pM2', 'p5-').replace('pM3', 'p6-')
+    for i in [1,3,5]:
+        latex = latex.replace(f'-k{i}', f'$_{{k={i}}}$')
+    latex = latex.replace('vikcmp', 'DPvc').replace('vikm', 'DPvm').replace('vik', 'DPv')
+    latex = latex.replace('cmp', 'DPc').replace('mah', 'DPm')
 
-    for i in [1, 5, 50]:
-        latex = latex.replace(f'_e{i}', f' $\\epsilon = {i}$')
+    for i in [1, 50, 5]:
+        latex = latex.replace(f'_e{i}', f'$_{{\\epsilon = {i}}}$')
 
     latex = latex.replace('$0', '0$').replace('nan', '-')
 
     return latex
 
 
-all_latexes = ''
-for dataset in tqdm(all_datasets):
-    print(f"Generating table for {dataset}")
-    latex = create_table(df.copy(), refs, [dataset], metrics_oi_)
-    all_latexes += '\n\n' + latex
+# all_latexes = ''
+# for dataset in tqdm(all_datasets):
+#     print(f"Generating table for {dataset}")
+#     latex = create_table(df.copy(), refs, [dataset], metrics_oi_)
+#     all_latexes += '\n\n' + latex
 
+datasets_oi = [
+    'irds:beir/nfcorpus/test',
+    'irds:beir/scifact/test',
+    'irds:beir/trec-covid',
+    'irds:beir/webis-touche2020/v2',
+]
+all_latexes = create_table(df.copy(), refs, datasets_oi, metrics_oi_)
 print(all_latexes)

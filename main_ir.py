@@ -78,6 +78,11 @@ def main(args):
 def loop_all_over_reformulations(notes):
     import socket
     hostserver = socket.gethostname()
+
+    frac = None
+    if 'oneof:' in notes:
+        frac = notes.split('oneof:')[1].split('/')
+
     # save the args of the experiments already run, so I don't run them again
     missing_experiments = []
     path = os.path.join(LOCAL_DATADIR, 'missing_experiments.json')
@@ -87,8 +92,7 @@ def loop_all_over_reformulations(notes):
     else:
         with open(path, 'w') as f:
             json.dump(missing_experiments, f)
-
-    retrivs = ['monoT5']
+    retrievers = ['monoT5']
     # retrivs = ['bm25']
     # all_ds = ['irds:msmarco-document/trec-dl-2020']
     i = 0
@@ -96,25 +100,21 @@ def loop_all_over_reformulations(notes):
 
     all_ds_ = all_ds
     all_reformulation_types_ = all_reformulation_types
-    retrivs_ = retrivs
+    retrievers_ = retrievers
 
     if 'reversed' in notes:
         all_ds_ = all_ds[::-1]
         all_reformulation_types_ = all_reformulation_types[::-1]
-        retrivs_ = retrivs[::-1]
+        retrievers_ = retrievers[::-1]
 
     for dataset_name in all_ds_:
         for reformulation in all_reformulation_types_:
-            for retriever in retrivs_:
+            for retriever in retrievers_:
                 i += 1
-                print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
+                print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrievers_)}')
 
                 # if running in beluga do only even
-                if hostserver.startswith('bg') and i % 2 != 0:
-                    continue
-
-                # if in narval the opposite
-                if hostserver.startswith('nr') and i % 2 == 0:
+                if missing_i % frac[1] != frac[0]:
                     continue
 
                 if not any([
