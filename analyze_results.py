@@ -11,7 +11,7 @@ from private_obfuscation.reformulators import get_reformulation_name
 from private_obfuscation.main_ir import all_ds, all_reformulation_types, all_retrievers
 
 add_similarities = True
-recreate_the_csv = False
+recreate_the_csv = True
 
 pandas_path = os.path.join(PODATADIR, 'results.csv')
 missing_path = os.path.join(LOCAL_DATADIR, 'missing_experiments.json')
