@@ -1,4 +1,4 @@
-import os, zipfile, sys, json
+import os, zipfile, sys, json, shutil
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
@@ -24,7 +24,7 @@ all_ds = [
 
 
 
-add_similarities = True
+add_similarities = False
 recreate_the_csv = True
 
 pandas_path = os.path.join(PODATADIR, 'results.csv')

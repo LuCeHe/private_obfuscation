@@ -208,15 +208,15 @@ def get_all_similarites_from_reformulations():
         if 'reformulations' in d
            and not 'original' in d
            and not '_tmp_' in d
-
     ]
-    print(dirs)
+    # print(dirs)
 
     np.random.shuffle(dirs)
     for d in tqdm(dirs):
         if d in done_similarities:
+            print('Already done', d)
             continue
-
+        print('Doing', d)
         path = os.path.join(PODATADIR, d)
 
         # print(f'Loading reformulations from {d}...')

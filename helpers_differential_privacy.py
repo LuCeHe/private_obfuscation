@@ -85,6 +85,26 @@ class MahalanobisMechanism(AbstractMechanism):
         Z = X * Y
         return Z
 
+def vickrey_get_protected_vectors(self, embeddings):
+    n_words = len(embeddings)
+    noisy_embeddings = []
+    for e in embeddings:
+        noisy_embeddings.append(e + self.noise_sampling())
+
+    noisy_embeddings = np.array(noisy_embeddings)
+    distance = euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
+
+    closest = np.argpartition(distance, 2, axis=1)[:, :2]
+    dist_to_closest = distance[np.tile(np.arange(n_words).reshape(-1, 1), 2), closest]
+
+    p = ((1 - self.lam) * dist_to_closest[:, 1]
+         / (self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1]))
+
+    vickrey_choice = np.array([npr.choice(2, p=[p[w], 1 - p[w]]) for w in range(n_words)])
+    noisy_embeddings = self.emb_matrix[closest[np.arange(n_words), vickrey_choice]]
+
+    return noisy_embeddings
+
 
 # VKM class
 class VickreyMechanism(MahalanobisMechanism):
@@ -93,24 +113,7 @@ class VickreyMechanism(MahalanobisMechanism):
         self.lam = kwargs.get('lambda', 0.75)
 
     def get_protected_vectors(self, embeddings):
-        n_words = len(embeddings)
-        noisy_embeddings = []
-        for e in embeddings:
-            noisy_embeddings.append(e + self.noise_sampling())
-
-        noisy_embeddings = np.array(noisy_embeddings)
-        distance = euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
-
-        closest = np.argpartition(distance, 2, axis=1)[:, :2]
-        dist_to_closest = distance[np.tile(np.arange(n_words).reshape(-1, 1), 2), closest]
-
-        p = ((1 - self.lam) * dist_to_closest[:, 1]) / (
-                self.lam * dist_to_closest[:, 0] + (1 - self.lam) * dist_to_closest[:, 1])
-
-        vickrey_choice = np.array([npr.choice(2, p=[p[w], 1 - p[w]]) for w in range(n_words)])
-        noisy_embeddings = self.emb_matrix[closest[np.arange(n_words), vickrey_choice]]
-
-        return noisy_embeddings
+        return vickrey_get_protected_vectors(self, embeddings)
 
 
 # VKMM class
@@ -384,7 +387,7 @@ def use_diffpriv_glove(
             mech = get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix)
 
         obfuscated_query = obfuscate_text(query, mech, glove_embeddings)
-        with open(tmppath, 'w', encoding='utf-8') as f:
+        with open(tmppath, 'a', encoding='utf-8') as f:
             f.write(f"{query}###DIVIDEUNLIKELY####{obfuscated_query}\n")
 
     with open(tmppath, 'r', encoding='utf-8') as f:
@@ -435,8 +438,12 @@ if __name__ == "__main__":
     glove_version = 'glove-twitter-25'  # '42B' 'glove-twitter-25'
     glove_embeddings = load_glove_embeddings(glove_version)
     refs = use_diffpriv_glove(
-        'vikcmp_e1',
-        ["What is the capital of France?", "What is the capital of Germany?"],
+        'vikcmp_e3',
+        [
+            "What is the capital of France?",
+            "What is the capital of Germany?",
+            "Another sentence"
+        ],
         extra_args={'glove_embeddings': glove_embeddings}
     )
     print(refs)
