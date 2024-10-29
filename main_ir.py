@@ -113,9 +113,10 @@ def loop_all_over_reformulations(notes):
                 i += 1
                 print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrievers_)}')
 
-                # if running in beluga do only even
-                if missing_i % frac[1] != frac[0]:
-                    continue
+                # distribute the experiments among different servers
+                if not frac is None:
+                    if i % frac[1] != frac[0]:
+                        continue
 
                 if not any([
                     d['reformulation'] == reformulation

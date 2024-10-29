@@ -64,13 +64,13 @@ def bold_and_underline(table, metrics_oi, prefix_metric=''):
     # split the table between rows to skip and those to treat
 
     for m in metrics_oi:
-        # in bold
-        # table[f'{pm}{m}'] = table[f'{pm}{m}'].apply(lambda x: x.replace('\%', '')).astype(float)
-
         # get best and second best
         table[f'{pm}{m}'] = table[f'{pm}{m}'].astype(float)
         best_metric = table[f'{pm}{m}'].max()
-        second_best_metric = table[f'{pm}{m}'].sort_values(ascending=False).iloc[1]
+        second_best_metric = table[f'{pm}{m}'].sort_values(ascending=False).unique()[1]
+
+        print(f"Metric: {m}")
+        print(f"Best: {best_metric}, Second best: {second_best_metric}")
 
         # in bold
         table[f'{pm}{m}'] = table[f'{pm}{m}'].apply(
@@ -81,11 +81,6 @@ def bold_and_underline(table, metrics_oi, prefix_metric=''):
             lambda x: f'\\underline{{{x}}}' if str(x) == str(second_best_metric)
             else f'{float(x):.3f}' if isinstance(x, float) else x
         )
-
-        # table[f'{pm}{m}'] = table[f'{pm}{m}'].apply(lambda x: x)
-
-    # sort by index
-    # table = table.sort_index()
 
     return table
 
@@ -158,8 +153,8 @@ def create_table(df, refs, datasets_oi, metrics_oi):
     latex = latex.replace('webis-touche2020/v2', 'Webis-Touche')
 
     latex = latex.replace('mean_bert_similarity', 'BERT')
-    latex = latex.replace('mean_jaccard_similarity', 'Jacc')
-    latex = latex.replace('mean_szymkiewicz_similarity', 'Szym')
+    latex = latex.replace('mean_jaccard_similarity', 'Jacc $\downarrow$')
+    latex = latex.replace('mean_szymkiewicz_similarity', 'Szym $\downarrow$')
     latex = latex.replace('map', 'MAP')
     latex = latex.replace('}0', '0}').replace('} 0', '0}').replace('vik\\textbf{', '\\textbf{vik')
     latex = latex.replace('pM1', 'p4-').replace('pM2', 'p5-').replace('pM3', 'p6-')
