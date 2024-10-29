@@ -22,11 +22,6 @@ metrics_oi_ = [
 pandas_path = os.path.join(PODATADIR, 'results.csv')
 df = pd.read_csv(pandas_path)
 
-# reduce precision of metrics to :.2f
-df = df.round(3)
-
-# select only retriever BM25
-df = df[df['retriever'] == 'BM25']
 
 all_reformulations = df['reformulation'].unique()
 all_datasets = df['dataset_name'].unique()
@@ -57,7 +52,7 @@ refs = [
 ]
 
 
-def bold_and_underline(table, metrics_oi, prefix_metric=''):
+def bold_and_underline(table, metrics_oi, prefix_metric='', inverse_metrics=[]):
     table = table.round(3)
     pm = prefix_metric
 
@@ -66,27 +61,38 @@ def bold_and_underline(table, metrics_oi, prefix_metric=''):
     for m in metrics_oi:
         # get best and second best
         table[f'{pm}{m}'] = table[f'{pm}{m}'].astype(float)
-        best_metric = table[f'{pm}{m}'].max()
-        second_best_metric = table[f'{pm}{m}'].sort_values(ascending=False).unique()[1]
 
-        print(f"Metric: {m}")
-        print(f"Best: {best_metric}, Second best: {second_best_metric}")
+        if m in inverse_metrics:
+            best_metric = table[f'{pm}{m}'].min()
+            second_best_metric = table[f'{pm}{m}'].sort_values(ascending=True).unique()[1]
+        else:
+            best_metric = table[f'{pm}{m}'].max()
+            second_best_metric = table[f'{pm}{m}'].sort_values(ascending=False).unique()[1]
 
         # in bold
         table[f'{pm}{m}'] = table[f'{pm}{m}'].apply(
-            lambda x: f'\\textbf{{{x}}}' if str(x) == str(best_metric) else x
+            lambda x: f'\\textbf{{{float(x):.3f}}}' if str(x) == str(best_metric) else x
         )
         # underlined
         table[f'{pm}{m}'] = table[f'{pm}{m}'].apply(
-            lambda x: f'\\underline{{{x}}}' if str(x) == str(second_best_metric)
+            lambda x: f'\\underline{{{float(x):.3f}}}' if str(x) == str(second_best_metric)
             else f'{float(x):.3f}' if isinstance(x, float) else x
         )
 
     return table
 
 
-def create_table(df, refs, datasets_oi, metrics_oi):
+def create_table(df, refs, datasets_oi, metrics_oi, subset='BM25', inverse_metrics=['mean_jaccard_similarity', 'mean_szymkiewicz_similarity']):
+    # reduce precision of metrics to :.2f
+    df = df.round(3)
+
+    # select only retriever BM25
+    df = df[df['retriever'] == subset]
+
     sdf = df.copy()
+
+
+
 
     rows = []
     row_0 = [''] + [f'd{i}' for i, dataset in enumerate(datasets_oi) for _, _ in enumerate(metrics_oi)]
@@ -98,13 +104,11 @@ def create_table(df, refs, datasets_oi, metrics_oi):
         row = [ref]
         for dataset in datasets_oi:
             dsdf = sdf[(sdf['dataset_name'] == dataset)]
-            dsdf = bold_and_underline(dsdf, metrics_oi)
-            # print(dsdf.head())
+            dsdf = bold_and_underline(dsdf, metrics_oi, inverse_metrics=inverse_metrics)
 
             for metric in metrics_oi:
                 mask = dsdf['reformulation'].eq(ref)
                 v = dsdf[mask][metric].values
-                # v = f'{v[0]:.3f}' if len(v) > 0 else '-'
                 v = v[0] if len(v) > 0 else '-'
 
                 row.append(v)
@@ -122,10 +126,14 @@ def create_table(df, refs, datasets_oi, metrics_oi):
 \\resizebox{{\columnwidth}}{{!}}{{%
 {latex}
 }}
-\\caption{{Effect that different obfuscations have.}}
+\\caption{{Effect that different obfuscations have. The retriever for this table is {subset}.}}
 \\label{{tab:table1}}
 \\end{{table}}
 """
+
+    lls = 'l' + 'l' * len(datasets_oi) * len(metrics_oi)
+    lls_new = 'l' + 'c' * len(datasets_oi) * len(metrics_oi)
+    latex = latex.replace(lls, lls_new)
 
     for ref in refs:
         latex = latex.replace(ref, f'\\textbf{{{ref}}}')
@@ -153,8 +161,8 @@ def create_table(df, refs, datasets_oi, metrics_oi):
     latex = latex.replace('webis-touche2020/v2', 'Webis-Touche')
 
     latex = latex.replace('mean_bert_similarity', 'BERT')
-    latex = latex.replace('mean_jaccard_similarity', 'Jacc $\downarrow$')
-    latex = latex.replace('mean_szymkiewicz_similarity', 'Szym $\downarrow$')
+    latex = latex.replace('mean_jaccard_similarity', 'Jacc$\downarrow$')
+    latex = latex.replace('mean_szymkiewicz_similarity', 'Szym$\downarrow$')
     latex = latex.replace('map', 'MAP')
     latex = latex.replace('}0', '0}').replace('} 0', '0}').replace('vik\\textbf{', '\\textbf{vik')
     latex = latex.replace('pM1', 'p4-').replace('pM2', 'p5-').replace('pM3', 'p6-')
@@ -166,7 +174,7 @@ def create_table(df, refs, datasets_oi, metrics_oi):
     for i in [1, 50, 5]:
         latex = latex.replace(f'_e{i}', f'$_{{\\epsilon = {i}}}$')
 
-    latex = latex.replace('$0', '0$').replace('nan', '-')
+    latex = latex.replace('$0', '0$').replace('nan', '-').replace('BM25%100>>MonoT5', 'BM25$_{100}\\rightarrow$MonoT5')
 
     return latex
 
@@ -182,6 +190,17 @@ datasets_oi = [
     'irds:beir/scifact/test',
     'irds:beir/trec-covid',
     'irds:beir/webis-touche2020/v2',
+    # 'irds:msmarco-document/trec-dl-2019',
+    # 'irds:msmarco-document/trec-dl-2020',
 ]
-all_latexes = create_table(df.copy(), refs, datasets_oi, metrics_oi_)
+
+retrievers = df['retriever'].unique()
+subset = 'BM25%100>>MonoT5' # 'BM25' 'BM25%100>>MonoT5'
+print(retrievers)
+
+all_latexes = create_table(df.copy(), refs, datasets_oi, metrics_oi_, subset=subset)
 print(all_latexes)
+
+
+# all_latexes = create_table(df.copy(), refs, ['irds:msmarco-document/trec-dl-2020'], metrics_oi_)
+# print(all_latexes)

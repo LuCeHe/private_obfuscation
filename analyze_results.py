@@ -17,8 +17,8 @@ all_ds = [
     'irds:beir/scifact/test',
     'irds:beir/trec-covid',
     'irds:beir/webis-touche2020/v2',
-    'irds:msmarco-document/trec-dl-2019',
-    'irds:msmarco-document/trec-dl-2020',
+    # 'irds:msmarco-document/trec-dl-2019',
+    # 'irds:msmarco-document/trec-dl-2020',
     # 'irds:msmarco-document/trec-dl-2020/judged',
 ]
 
