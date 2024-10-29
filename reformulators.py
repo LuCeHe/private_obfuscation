@@ -546,6 +546,6 @@ def get_missing_reformulations():
 
 
 if __name__ == "__main__":
-    # main_reformulate()
-    cleaning_gpt3_reformulations()
+    main_reformulate()
+    # cleaning_gpt3_reformulations()
     pass

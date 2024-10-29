@@ -91,6 +91,7 @@ def vickrey_get_protected_vectors(self, embeddings):
     noisy_embeddings = []
     for e in embeddings:
         noisy_embeddings.append(e + self.noise_sampling())
+        # noisy_embeddings.append(e)
 
     noisy_embeddings = np.array(noisy_embeddings)
     distance = euclidean_distance_matrix(noisy_embeddings, self.emb_matrix)
@@ -303,6 +304,22 @@ def obfuscate_text(text, mechanism, glove_embeddings):
     return obfuscated_sentence.replace('_', ' ')
 
 
+
+def obfuscate_text_memory_safer(text, mechanism, glove_embeddings):
+    """Obfuscates text on a per-word basis using the given DP mechanism."""
+
+    # tokenize
+    words = word_tokenize(text.lower())
+    protected_embeddings = np.array([
+        mechanism.get_protected_vectors(
+            get_glove_vector(glove_embeddings, word)[None]
+        )[0] for word in words
+    ])
+
+    obfuscated_words = [glove_embeddings.similar_by_vector(emb)[0][0] for emb in protected_embeddings]
+    obfuscated_sentence = detokenizer.detokenize(obfuscated_words)
+    return obfuscated_sentence.replace('_', ' ')
+
 def get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix):
     if reformulation_type.startswith('cmp'):
         mech = CMPMechanism(m=embedding_dim, epsilon=epsilon)
@@ -352,7 +369,9 @@ def use_diffpriv_glove(
             del mech
             mech = get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix)
 
-        obfuscated_query = obfuscate_text(query, mech, glove_embeddings)
+        # obfuscated_query = obfuscate_text(query, mech, glove_embeddings)
+        obfuscated_query = obfuscate_text_memory_safer(query, mech, glove_embeddings)
+
         with open(tmppath, 'a', encoding='utf-8') as f:
             f.write(f"{query}###DIVIDEUNLIKELY####{obfuscated_query}\n")
 
@@ -412,9 +431,8 @@ def test_vickrey():
     embeddings = [npr.randn(e_dim) for _ in range(n_words)]
     print('Embeddings:', embeddings)
 
-    protected_embeddings = [mechanism.get_protected_vectors(e[None]) for e in embeddings]
+    protected_embeddings = np.array([mechanism.get_protected_vectors(e[None])[0] for e in embeddings])
     print('Protected embeddings:', protected_embeddings)
-
 
     embeddings = np.array(embeddings)
     print('embeddings.shape: ', embeddings.shape)
@@ -438,7 +456,7 @@ def test_use_diffpriv():
     print(refs)
 
 if __name__ == "__main__":
-    # test_use_diffpriv()
-    test_vickrey()
+    test_use_diffpriv()
+    # test_vickrey()
 
     pass
