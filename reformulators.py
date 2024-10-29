@@ -497,8 +497,7 @@ def gpt3_ref_cleaner(reformulation, query, filename):
         if ':' in reformulation:
             clean_reformulation = reformulation.split(':')[-1]
 
-    if 'promptM1k3' in filename or 'promptM1k5' in filename or 'promptM2k3' in filename or 'promptM2k5' in filename \
-            or 'promptM3k3' in filename or 'promptM3k5' in filename:
+    if 'promptM1k' in filename or 'promptM2k' in filename or 'promptM3k' in filename:
 
         for j in range(6):
             clean_reformulation = clean_reformulation.replace(f'{j}. ', 'x.!')
@@ -520,7 +519,7 @@ def cleaning_gpt3_reformulations():
     print(dirs)
 
     # d = dirs[0]
-    # d = 'reformulations_gpt-3p5-turbo_irds-beir-nfcorpus-test_promptM3k5_original.txt'
+    # d = 'reformulations_gpt-3p5-turbo_irds-beir-nfcorpus-test_promptM3k1_original.txt'
 
     for d in dirs:
         path = os.path.join(PODATADIR, d)
@@ -532,7 +531,6 @@ def cleaning_gpt3_reformulations():
             reformulations = eval(f.read())
 
         new_reformulations = {}
-
         for query, reformulation in tqdm(reformulations.items()):
             clean_reformulation = gpt3_ref_cleaner(reformulation, query, d)
             new_reformulations[query] = clean_reformulation
@@ -548,5 +546,6 @@ def get_missing_reformulations():
 
 
 if __name__ == "__main__":
-    main_reformulate()
+    # main_reformulate()
+    cleaning_gpt3_reformulations()
     pass

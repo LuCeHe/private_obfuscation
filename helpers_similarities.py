@@ -8,7 +8,7 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.paths import PODATADIR
+from private_obfuscation.paths import LOCAL_DATADIR, PODATADIR
 from private_obfuscation.helpers_more import download_nltks, NumpyEncoder
 
 download_nltks()
@@ -187,7 +187,7 @@ def get_all_similarites_from_reformulations():
 
     # save the args of the experiments already run, so I don't run them again
     done_similarities = {}
-    simpath = os.path.join(PODATADIR, 'done_similarities.json')
+    simpath = os.path.join(LOCAL_DATADIR, 'done_similarities.json')
     if os.path.exists(simpath):
         with open(simpath, 'r') as f:
             done_similarities = json.load(f)
@@ -253,5 +253,27 @@ def get_all_similarites_from_reformulations():
         #     print(f'{k}: {v:.2f}')
 
 
+def fix_wrong_similarities():
+    import json
+
+    # save the args of the experiments already run, so I don't run them again
+    done_similarities = {}
+    simpath = os.path.join(LOCAL_DATADIR, 'done_similarities.json')
+    if os.path.exists(simpath):
+        with open(simpath, 'r') as f:
+            done_similarities = json.load(f)
+    else:
+        with open(simpath, 'w') as f:
+            json.dump(done_similarities, f)
+
+    sims_to_remove = [k for k in done_similarities.keys() if 'k1' in k]
+    print(sims_to_remove)
+    for k in sims_to_remove:
+        del done_similarities[k]
+
+    with open(simpath, 'w') as f:
+        json.dump(done_similarities, f)
+
 if __name__ == '__main__':
     get_all_similarites_from_reformulations()
+    # fix_wrong_similarities()

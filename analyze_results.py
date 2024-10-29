@@ -41,7 +41,7 @@ if recreate_the_csv:
                 zip_ref.extractall(path.replace('.zip', ''))
         unzipped.append(d.replace('.zip', ''))
 
-    simpath = os.path.join(PODATADIR, 'done_similarities.json')
+    simpath = os.path.join(LOCAL_DATADIR, 'done_similarities.json')
     with open(simpath, 'r') as f:
         done_similarities = json.load(f)
 
