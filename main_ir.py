@@ -110,11 +110,11 @@ def loop_all_over_reformulations(notes):
                 print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
                 # if running in beluga do only even
-                if hostserver.startswith('bg') and i % 2 != 0:
+                if hostserver.startswith('bg') and i % 2 == 0:
                     continue
 
                 # if in narval the opposite
-                if hostserver.startswith('nr') and i % 2 == 0:
+                if hostserver.startswith('nr') and i % 2 != 0:
                     continue
 
                 if not any([

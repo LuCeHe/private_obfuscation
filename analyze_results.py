@@ -8,7 +8,21 @@ sys.path.append(WORKDIR)
 import pandas as pd
 from private_obfuscation.paths import EXPSDIR, PODATADIR, LOCAL_DATADIR
 from private_obfuscation.reformulators import get_reformulation_name
-from private_obfuscation.main_ir import all_ds, all_reformulation_types, all_retrievers
+from private_obfuscation.main_ir import all_reformulation_types, all_retrievers
+
+all_ds = [
+    # 'irds:vaswani',
+    # 'irds:beir/arguana',
+    'irds:beir/nfcorpus/test',
+    'irds:beir/scifact/test',
+    'irds:beir/trec-covid',
+    'irds:beir/webis-touche2020/v2',
+    'irds:msmarco-document/trec-dl-2019',
+    'irds:msmarco-document/trec-dl-2020',
+    # 'irds:msmarco-document/trec-dl-2020/judged',
+]
+
+
 
 add_similarities = True
 recreate_the_csv = True
