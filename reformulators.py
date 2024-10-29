@@ -1,4 +1,4 @@
-import os, random, string, re, sys, argparse, json, shutil
+import os, random, string, re, sys, argparse, json
 from tqdm import tqdm
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
@@ -6,13 +6,12 @@ WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
 
 sys.path.append(WORKDIR)
 
-from private_obfuscation.helpers_more import download_nltks
+from private_obfuscation.helpers_more import download_nltks, refs_types, chatgpt_models, dp_refs, llms
 from private_obfuscation.helpers_similarities import reformulation_similarity, get_similarity_reformulations, \
     character_similarity
 from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR, DATADIR
 from private_obfuscation.helpers_differential_privacy import use_diffpriv_glove, load_glove_embeddings
-from private_obfuscation.helpers_llms import use_chatgpt, refs_types, use_huggingface, hf_model_ids, chatgpt_models, \
-    dp_refs, llms
+from private_obfuscation.helpers_llms import use_chatgpt, use_huggingface, hf_model_ids
 
 download_nltks()
 
@@ -540,6 +539,12 @@ def cleaning_gpt3_reformulations():
 
         with open(destination, 'w') as f:
             f.write(str(new_reformulations))
+
+
+def get_missing_reformulations():
+    from private_obfuscation.helpers_more import all_ds, all_reformulation_types, all_retrievers
+    refs = all_reformulation_types
+    ds = all_ds
 
 
 if __name__ == "__main__":

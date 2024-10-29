@@ -1,4 +1,4 @@
-import argparse, os, sys, json, time, string, random, shutil
+import argparse, os, sys, json, time, shutil
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))
@@ -15,34 +15,9 @@ RR, nDCG, P, R, AP = pt.measures.RR, pt.measures.nDCG, pt.measures.P, pt.measure
 from private_obfuscation.retrievers import get_retriever, get_dataset
 from private_obfuscation.helpers_more import do_save_dicts, create_exp_dir
 from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR
-from private_obfuscation.helpers_llms import refs_types, dp_refs
+from private_obfuscation.helpers_more import all_ds, all_reformulation_types, \
+    all_retrievers
 from private_obfuscation.reformulators import reformulate_queries
-
-all_reformulation_types = [
-    'none',
-    # 'random_char',
-    # 'chatgpt_improve',
-    *[f'chatgpt3p5_{rt}' for rt in list(refs_types.keys())],
-    *dp_refs,
-    'wordnet',
-]
-all_retrievers = [
-    'bm25',
-    # 'colbert',
-    'monoT5',
-]
-
-all_ds = [
-    # 'irds:vaswani',
-    'irds:beir/nfcorpus/test',
-    'irds:beir/scifact/test',
-    'irds:beir/trec-covid',
-    'irds:beir/webis-touche2020/v2',
-    # 'irds:beir/arguana',
-    'irds:msmarco-document/trec-dl-2019',
-    'irds:msmarco-document/trec-dl-2020',
-    # 'irds:msmarco-document/trec-dl-2020/judged',
-]
 
 
 def parse_args():
@@ -101,6 +76,8 @@ def main(args):
 
 
 def loop_all_over_reformulations(notes):
+    import socket
+    hostserver = socket.gethostname()
     # save the args of the experiments already run, so I don't run them again
     missing_experiments = []
     path = os.path.join(LOCAL_DATADIR, 'missing_experiments.json')
@@ -132,6 +109,14 @@ def loop_all_over_reformulations(notes):
                 i += 1
                 print(f'{i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
 
+                # # if running in beluga do only even
+                # if hostserver.startswith('bg') and i % 2 != 0:
+                #     continue
+                #
+                # # if in narval the opposite
+                # if hostserver.startswith('nr') and i % 2 == 0:
+                #     continue
+
                 if not any([
                     d['reformulation'] == reformulation
                     and d['retriever'] == retriever
@@ -159,6 +144,7 @@ def loop_all_over_reformulations(notes):
                     continue
 
     # print(f'Number of missing experiments: {missing_i}/{len(all_ds) * len(all_reformulation_types) * len(retrivs)}')
+
 
 if __name__ == "__main__":
     args = parse_args()

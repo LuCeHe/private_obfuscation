@@ -1,4 +1,4 @@
-import argparse, os, zipfile, sys, json
+import os, zipfile, sys, json
 
 CDIR = os.path.dirname(os.path.realpath(__file__))
 WORKDIR = os.path.abspath(os.path.join(CDIR, '..'))

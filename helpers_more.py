@@ -4,6 +4,75 @@ import numpy as np
 from private_obfuscation.paths import DATADIR, EXPSDIR
 
 
+hf_model_ids = {
+    'mamba': 'state-spaces/mamba-130m-hf',
+    'mambaxl': 'state-spaces/mamba-2.8b-hf',
+    'falconmamba': 'tiiuae/falcon-mamba-7b-instruct',
+    'gpt2': 'openai-community/gpt2',
+    'gpt2xl': 'openai-community/gpt2-xl',
+    'llama3': 'meta-llama/Llama-3.2-1B',
+    'falcon': 'tiiuae/falcon-7b',
+    'mistral': 'mistralai/Mistral-7B-v0.1',
+    'internlm': 'internlm/internlm2_5-7b-chat',
+}
+
+chatgpt_models = [
+    'gpt-3.5-turbo',
+]
+
+llms = chatgpt_models + list(hf_model_ids.keys())
+
+refs_types = {
+    # "improve": "You are an expert in Information Retrieval. Reword the query into a very effective version.",
+    "prompt1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query.",
+    "prompt2": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query by applying the concept of generalization.",
+    "prompt3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Rewrite this query by applying the concept of differential privacy.",
+    "promptM1k1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 1 dummy, random queries, given this query.",
+    "promptM1k3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 3 dummy, random queries, given this query.",
+    "promptM1k5": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 5 dummy, random queries, given this query.",
+    "promptM2k1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 1 dummy queries, which are semantically related to this query.",
+    "promptM2k3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 3 dummy queries, which are semantically related to this query.",
+    "promptM2k5": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 5 dummy queries, which are semantically related to this query.",
+    "promptM3k1": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 1 dummy queries, which generalize this query.",
+    "promptM3k3": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 3 dummy queries, which generalize this query.",
+    "promptM3k5": "You are a privacy expert tasked with protecting the user's privacy when performing the following task. Generate 5 dummy queries, which generalize this query.",
+}
+
+dp_refs = [
+    "cmp_e1", "cmp_e5", "cmp_e50",
+    "mah_e1", "mah_e5", "mah_e50",
+    "vik_e1", "vik_e5", "vik_e50",
+    "vikm_e1", "vikm_e5", "vikm_e50",
+    "vikcmp_e1", "vikcmp_e5", "vikcmp_e50",
+]
+
+all_reformulation_types = [
+    'none',
+    # 'random_char',
+    # 'chatgpt_improve',
+    *[f'chatgpt3p5_{rt}' for rt in list(refs_types.keys())],
+    *dp_refs,
+    'wordnet',
+]
+all_retrievers = [
+    'bm25',
+    # 'colbert',
+    'monoT5',
+]
+
+all_ds = [
+    # 'irds:vaswani',
+    # 'irds:beir/arguana',
+    'irds:beir/nfcorpus/test',
+    'irds:beir/scifact/test',
+    'irds:beir/trec-covid',
+    'irds:beir/webis-touche2020/v2',
+    # 'irds:msmarco-document/trec-dl-2019',
+    # 'irds:msmarco-document/trec-dl-2020',
+    # 'irds:msmarco-document/trec-dl-2020/judged',
+]
+
+
 class NumpyEncoder(json.JSONEncoder):
     """ Custom encoder for numpy data types """
 
