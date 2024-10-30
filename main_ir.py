@@ -43,10 +43,6 @@ def main(args):
     print('Reformulating queries...')
     topics = reformulate_queries(topics, args.reformulation, dataset_name=args.dataset_name)
 
-
-
-    print(topics.to_string())
-
     print('Getting retriever...')
     retrievers = get_retriever(args.dataset_name, args.retriever, index=index, indexref=indexref, dataset=dataset)
 

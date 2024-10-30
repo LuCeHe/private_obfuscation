@@ -100,8 +100,10 @@ def reformulate_queries(topics, reformulation_type, dataset_name='vaswani'):
     topics["query"] = topics["query"].apply(reformulator)
 
     # remove rows where the reformulated query is ' '
+    print('len queries:', len(topics['query']))
     topics = topics[topics['query'] != ' ']
     topics = topics[topics['query'] != '']
+    print('len queries:', len(topics['query']))
 
     return topics
 

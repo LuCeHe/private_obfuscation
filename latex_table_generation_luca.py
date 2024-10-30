@@ -195,10 +195,13 @@ datasets_oi = [
 
 retrievers = df['retriever'].unique()
 subset = 'BM25'  # 'BM25' 'BM25%100>>MonoT5'
+subset = 'BM25%100>>MonoT5'  # 'BM25' 'BM25%100>>MonoT5'
 print(retrievers)
 
-all_latexes = create_table(df.copy(), refs, datasets_oi, metrics_oi_, subset=subset)
-print(all_latexes)
+subsets = ['BM25', 'BM25%100>>MonoT5']
+for subset in subsets:
+    all_latexes = create_table(df.copy(), refs, datasets_oi, metrics_oi_, subset=subset)
+    print(all_latexes)
 
 # all_latexes = create_table(df.copy(), refs, ['irds:msmarco-document/trec-dl-2020'], metrics_oi_)
 # print(all_latexes)
