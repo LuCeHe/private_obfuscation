@@ -22,8 +22,6 @@ all_ds = [
     # 'irds:msmarco-document/trec-dl-2020/judged',
 ]
 
-
-
 add_similarities = True
 recreate_the_csv = True
 
