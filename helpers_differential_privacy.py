@@ -304,7 +304,6 @@ def obfuscate_text(text, mechanism, glove_embeddings):
     return obfuscated_sentence.replace('_', ' ')
 
 
-
 def obfuscate_text_memory_safer(text, mechanism, glove_embeddings):
     """Obfuscates text on a per-word basis using the given DP mechanism."""
 
@@ -319,6 +318,7 @@ def obfuscate_text_memory_safer(text, mechanism, glove_embeddings):
     obfuscated_words = [glove_embeddings.similar_by_vector(emb)[0][0] for emb in protected_embeddings]
     obfuscated_sentence = detokenizer.detokenize(obfuscated_words)
     return obfuscated_sentence.replace('_', ' ')
+
 
 def get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix):
     if reformulation_type.startswith('cmp'):
@@ -339,6 +339,7 @@ def get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix):
 def use_diffpriv_glove(
         reformulation_type='vikcmp_e1',
         queries=["What is the capital of France?", "What is the capital of Germany?"],
+        dataset_name='trec-robust',
         extra_args=None
 ):
     import string, random, time
@@ -346,9 +347,11 @@ def use_diffpriv_glove(
     time_string = time.strftime("%Y-%m-%d--%H-%M-%S--", named_tuple)
 
     characters = string.ascii_letters + string.digits
-    random_string = ''.join(random.choice(characters) for i in range(5))
+    random_string = ''.join(random.choice(characters) for _ in range(5))
 
-    tmppath = os.path.join(PODATADIR, time_string + random_string + f'_{reformulation_type}_tmp_reformulations.txt')
+    # dataset_name_ = dataset_name.replace('-', '_').replace()
+    dataset_name_ = dataset_name.replace(':', '-').replace('/', '-')
+    tmppath = os.path.join(PODATADIR, time_string + random_string + f'_{dataset_name_}_{reformulation_type}_tmp_reformulations.txt')
 
     if not extra_args is None and 'glove_embeddings' in extra_args:
         glove_embeddings = extra_args['glove_embeddings']
@@ -454,6 +457,7 @@ def test_use_diffpriv():
         extra_args={'glove_embeddings': glove_embeddings}
     )
     print(refs)
+
 
 if __name__ == "__main__":
     test_use_diffpriv()

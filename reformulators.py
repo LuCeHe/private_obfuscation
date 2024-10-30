@@ -332,7 +332,9 @@ def use_wordnet_generalization(
     return pairs
 
 
-def queries_to_reformulations(queries, reformulation_type, model_name='gpt-3.5-turbo', extra_args=None):
+def queries_to_reformulations(
+        queries, reformulation_type, model_name='gpt-3.5-turbo', dataset_name='vaswani',
+        extra_args=None):
     if reformulation_type in refs_types and model_name in chatgpt_models:
         reformulations = use_chatgpt(
             personality=refs_types[reformulation_type],
@@ -351,6 +353,7 @@ def queries_to_reformulations(queries, reformulation_type, model_name='gpt-3.5-t
         reformulations = use_diffpriv_glove(
             reformulation_type=reformulation_type,
             queries=queries,
+            dataset_name=dataset_name,
             extra_args=extra_args
         )
 
@@ -415,7 +418,7 @@ def create_reformulations(
         queries = [row['query'] for index, row in topics.iterrows()]
         reformulations = queries_to_reformulations(
             queries=queries, reformulation_type=reformulation_type, model_name=model_name,
-            extra_args=extra_args
+            dataset_name=dataset_name,            extra_args=extra_args
         )
 
         with open(path, 'w', encoding="utf-8") as f:
