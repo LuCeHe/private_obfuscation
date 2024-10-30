@@ -39,11 +39,11 @@ print(all_datasets)
 refs = [
     'none',
     'wordnet',
-    'cmp_e1', 'cmp_e5', 'cmp_e50',
-    'mah_e1', 'mah_e5', 'mah_e50',
-    'vik_e1', 'vik_e5', 'vik_e50',
-    'vikcmp_e1', 'vikcmp_e5', 'vikcmp_e50',
-    'vikm_e1', 'vikm_e5', 'vikm_e50',
+    'cmp_e1', 'cmp_e5', 'cmp_e10', 'cmp_e50',
+    'mah_e1', 'mah_e5', 'mah_e10', 'mah_e50',
+    'vik_e1', 'vik_e5', 'vik_e10', 'vik_e50',
+    'vikcmp_e1', 'vikcmp_e5', 'vikcmp_e10', 'vikcmp_e50',
+    'vikm_e1', 'vikm_e5', 'vikm_e10', 'vikm_e50',
     'chatgpt3p5_prompt1', 'chatgpt3p5_prompt2', 'chatgpt3p5_prompt3',
     'chatgpt3p5_promptM1k1', 'chatgpt3p5_promptM1k3', 'chatgpt3p5_promptM1k5',
     'chatgpt3p5_promptM2k1', 'chatgpt3p5_promptM2k3', 'chatgpt3p5_promptM2k5',
@@ -170,7 +170,7 @@ def create_table(
     latex = latex.replace('vikcmp', 'DPvc').replace('vikm', 'DPvm').replace('vik', 'DPv')
     latex = latex.replace('cmp', 'DPc').replace('mah', 'DPm')
 
-    for i in [1, 50, 5]:
+    for i in [10, 1, 50, 5]:
         latex = latex.replace(f'_e{i}', f'$_{{\\epsilon = {i}}}$')
 
     latex = latex.replace('$0', '0$').replace('nan', '-').replace('BM25%100>>MonoT5', 'BM25$_{100}\\rightarrow$MonoT5')
