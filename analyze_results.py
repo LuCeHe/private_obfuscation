@@ -24,7 +24,7 @@ all_ds = [
 
 
 
-add_similarities = False
+add_similarities = True
 recreate_the_csv = True
 
 pandas_path = os.path.join(PODATADIR, 'results.csv')

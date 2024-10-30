@@ -22,7 +22,6 @@ metrics_oi_ = [
 pandas_path = os.path.join(PODATADIR, 'results.csv')
 df = pd.read_csv(pandas_path)
 
-
 all_reformulations = df['reformulation'].unique()
 all_datasets = df['dataset_name'].unique()
 
@@ -82,7 +81,10 @@ def bold_and_underline(table, metrics_oi, prefix_metric='', inverse_metrics=[]):
     return table
 
 
-def create_table(df, refs, datasets_oi, metrics_oi, subset='BM25', inverse_metrics=['mean_jaccard_similarity', 'mean_szymkiewicz_similarity']):
+def create_table(
+        df, refs, datasets_oi, metrics_oi, subset='BM25',
+        inverse_metrics=['mean_jaccard_similarity', 'mean_szymkiewicz_similarity']
+):
     # reduce precision of metrics to :.2f
     df = df.round(3)
 
@@ -90,9 +92,6 @@ def create_table(df, refs, datasets_oi, metrics_oi, subset='BM25', inverse_metri
     df = df[df['retriever'] == subset]
 
     sdf = df.copy()
-
-
-
 
     rows = []
     row_0 = [''] + [f'd{i}' for i, dataset in enumerate(datasets_oi) for _, _ in enumerate(metrics_oi)]
@@ -166,7 +165,7 @@ def create_table(df, refs, datasets_oi, metrics_oi, subset='BM25', inverse_metri
     latex = latex.replace('map', 'MAP')
     latex = latex.replace('}0', '0}').replace('} 0', '0}').replace('vik\\textbf{', '\\textbf{vik')
     latex = latex.replace('pM1', 'p4-').replace('pM2', 'p5-').replace('pM3', 'p6-')
-    for i in [1,3,5]:
+    for i in [1, 3, 5]:
         latex = latex.replace(f'-k{i}', f'$_{{k={i}}}$')
     latex = latex.replace('vikcmp', 'DPvc').replace('vikm', 'DPvm').replace('vik', 'DPv')
     latex = latex.replace('cmp', 'DPc').replace('mah', 'DPm')
@@ -195,12 +194,11 @@ datasets_oi = [
 ]
 
 retrievers = df['retriever'].unique()
-subset = 'BM25%100>>MonoT5' # 'BM25' 'BM25%100>>MonoT5'
+subset = 'BM25'  # 'BM25' 'BM25%100>>MonoT5'
 print(retrievers)
 
 all_latexes = create_table(df.copy(), refs, datasets_oi, metrics_oi_, subset=subset)
 print(all_latexes)
-
 
 # all_latexes = create_table(df.copy(), refs, ['irds:msmarco-document/trec-dl-2020'], metrics_oi_)
 # print(all_latexes)
