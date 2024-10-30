@@ -13,8 +13,9 @@ import pandas as pd
 from private_obfuscation.paths import PODATADIR
 
 metrics_oi_ = [
-    'mean_bert_similarity', 'mean_jaccard_similarity', 'mean_szymkiewicz_similarity', 'map', 'nDCG@10',
-    'nDCG@100'
+    'map', 'nDCG@10', 'nDCG@100',
+    'mean_bert_similarity', 'mean_jaccard_similarity',
+    # 'mean_szymkiewicz_similarity',
 ]
 # datasets_oi_ = ['irds:msmarco-document/trec-dl-2020', 'irds:beir/nfcorpus/test']
 
@@ -42,8 +43,8 @@ refs = [
     'cmp_e1', 'cmp_e5', 'cmp_e10', 'cmp_e50',
     'mah_e1', 'mah_e5', 'mah_e10', 'mah_e50',
     'vik_e1', 'vik_e5', 'vik_e10', 'vik_e50',
-    'vikcmp_e1', 'vikcmp_e5', 'vikcmp_e10', 'vikcmp_e50',
-    'vikm_e1', 'vikm_e5', 'vikm_e10', 'vikm_e50',
+    # 'vikcmp_e1', 'vikcmp_e5', 'vikcmp_e10', 'vikcmp_e50',
+    # 'vikm_e1', 'vikm_e5', 'vikm_e10', 'vikm_e50',
     'chatgpt3p5_prompt1', 'chatgpt3p5_prompt2', 'chatgpt3p5_prompt3',
     'chatgpt3p5_promptM1k1', 'chatgpt3p5_promptM1k3', 'chatgpt3p5_promptM1k5',
     'chatgpt3p5_promptM2k1', 'chatgpt3p5_promptM2k3', 'chatgpt3p5_promptM2k5',
@@ -83,7 +84,7 @@ def bold_and_underline(table, metrics_oi, prefix_metric='', inverse_metrics=[]):
 
 def create_table(
         df, refs, datasets_oi, metrics_oi, subset='BM25',
-        inverse_metrics=['mean_jaccard_similarity', 'mean_szymkiewicz_similarity']
+        inverse_metrics=['mean_jaccard_similarity', 'mean_szymkiewicz_similarity', 'mean_bert_similarity']
 ):
     # reduce precision of metrics to :.2f
     df = df.round(3)
@@ -131,23 +132,27 @@ def create_table(
 """
 
     lls = 'l' + 'l' * len(datasets_oi) * len(metrics_oi)
-    lls_new = 'l' + 'c' * len(datasets_oi) * len(metrics_oi)
+    lls_new = 'l' + '|'.join(['c' * len(metrics_oi)] * len(datasets_oi))
     latex = latex.replace(lls, lls_new)
 
     for ref in refs:
         latex = latex.replace(ref, f'\\textbf{{{ref}}}')
 
     # cleaning names
-    latex = latex.replace('chatgpt3p5_prompt', 'GPT p')
+    latex = latex.replace('chatgpt3p5_prompt', 'GPTp')
     latex = latex.replace('wordnet', 'WordNet')
     latex = latex.replace('reformulator', '\\textbf{reformulator}')
 
     metrics_with_at = [m for m in metrics_oi if '@' in m]
     for m in metrics_with_at:
-        latex = latex.replace(m, f'\\makecell{{\\textbf{{{m.split("@")[0]}}} \\\\ \\textbf{{@{m.split("@")[1]}}} }}')
+        # latex = latex.replace(m, f'\\makecell{{\\textbf{{{m.split("@")[0]}}} \\\\ \\textbf{{@{m.split("@")[1]}}} }}')
+        latex = latex.replace(m, f'\\makecell{{\\textbf{{{m.split("@")[0]}$_{{{m.split("@")[1]}}}$}} }}')
 
     for m in metrics_oi:
         latex = latex.replace(m, f'\\textbf{{{m}}}')
+
+        if m in inverse_metrics:
+            latex = latex.replace(f'{m}}}', f'{m}}}$\downarrow$')
 
     for i, d in enumerate(datasets_oi):
         d_string = ' & '.join([f'd{i}'] * len(metrics_oi))
@@ -155,25 +160,33 @@ def create_table(
 
     latex = latex.replace('irds:', '').replace('msmarco-document/', '')
     latex = latex.replace('beir/', '').replace('/test', '')
-    latex = latex.replace('trec-dl-2020', 'TREC DL 2020').replace('nfcorpus', 'NF-Corpus')
+    latex = latex.replace('trec-dl-2020', 'TREC DL 2020').replace('nfcorpus', 'NFCorpus')
     latex = latex.replace('scifact', 'SciFact').replace('trec-covid', 'TREC-Covid')
-    latex = latex.replace('webis-touche2020/v2', 'Webis-Touche')
+    latex = latex.replace('webis-touche2020/v2', "\\textit{Touch\\'e}")
 
-    latex = latex.replace('mean_bert_similarity', 'BERT')
-    latex = latex.replace('mean_jaccard_similarity', 'Jacc$\downarrow$')
-    latex = latex.replace('mean_szymkiewicz_similarity', 'Szym$\downarrow$')
+    latex = latex.replace('mean_bert_similarity', '\\textrm{CS}$_{\\textrm{B}}$')
+    latex = latex.replace('mean_jaccard_similarity', 'JI')
+    latex = latex.replace('mean_szymkiewicz_similarity', 'SSC')
     latex = latex.replace('map', 'MAP')
-    latex = latex.replace('}0', '0}').replace('} 0', '0}').replace('vik\\textbf{', '\\textbf{vik')
+    latex = latex.replace('reformulator', 'QM')
+    latex = latex.replace('none', 'NONE')
+    latex = latex.replace('vik\\textbf{', '\\textbf{vik')
     latex = latex.replace('pM1', 'p4-').replace('pM2', 'p5-').replace('pM3', 'p6-')
+
     for i in [1, 3, 5]:
-        latex = latex.replace(f'-k{i}', f'$_{{k={i}}}$')
-    latex = latex.replace('vikcmp', 'DPvc').replace('vikm', 'DPvm').replace('vik', 'DPv')
-    latex = latex.replace('cmp', 'DPc').replace('mah', 'DPm')
+        latex = latex.replace(f'-k{i}', f'$^{{k={i}}}$')
+
+    for i in range(7):
+        latex = latex.replace(f'p{i}', f'$_{{P{i}}}$')
+
+    latex = latex.replace('vikcmp', 'DP V$_{CMP}$').replace('vikm', 'DP V$_M$').replace('vik', 'DP V')
+    latex = latex.replace('cmp', 'DP CMP').replace('mah', 'DP M')
 
     for i in [10, 1, 50, 5]:
-        latex = latex.replace(f'_e{i}', f'$_{{\\epsilon = {i}}}$')
+        latex = latex.replace(f'_e{i}', f'$_{{{i}}}$')
 
     latex = latex.replace('$0', '0$').replace('nan', '-').replace('BM25%100>>MonoT5', 'BM25$_{100}\\rightarrow$MonoT5')
+    latex = latex.replace('$$', '').replace('}0', '0}').replace('} 0', '0}').replace('}$0', '0}$')
 
     return latex
 
@@ -186,7 +199,7 @@ def create_table(
 
 datasets_oi = [
     'irds:beir/nfcorpus/test',
-    'irds:beir/scifact/test',
+    # 'irds:beir/scifact/test',
     'irds:beir/trec-covid',
     'irds:beir/webis-touche2020/v2',
     # 'irds:msmarco-document/trec-dl-2019',
@@ -199,6 +212,7 @@ subset = 'BM25%100>>MonoT5'  # 'BM25' 'BM25%100>>MonoT5'
 print(retrievers)
 
 subsets = ['BM25', 'BM25%100>>MonoT5']
+# subsets = ['BM25']
 for subset in subsets:
     all_latexes = create_table(df.copy(), refs, datasets_oi, metrics_oi_, subset=subset)
     print(all_latexes)
