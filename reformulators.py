@@ -98,6 +98,11 @@ def reformulate_queries(topics, reformulation_type, dataset_name='vaswani'):
     topics["original_query"] = topics["query"]
     reformulator = get_reformulator(reformulation_type, dataset_name=dataset_name)
     topics["query"] = topics["query"].apply(reformulator)
+
+    # remove rows where the reformulated query is ' '
+    topics = topics[topics['query'] != ' ']
+    topics = topics[topics['query'] != '']
+
     return topics
 
 
