@@ -353,34 +353,48 @@ def use_diffpriv_glove(
     dataset_name_ = dataset_name.replace(':', '-').replace('/', '-')
     tmppath = os.path.join(PODATADIR, time_string + random_string + f'_{dataset_name_}_{reformulation_type}_tmp_reformulations.txt')
 
+    tmppaths = [f for f in os.listdir(PODATADIR) if f'_{dataset_name_}_{reformulation_type}_tmp_reformulations.txt' in f]
+
+    already_obfuscated_queries = []
+    if tmppaths:
+        # if the file already exists, load the obfuscations that were already done, so we don't repeat them
+        tmppath = os.path.join(PODATADIR, tmppaths[0])
+        with open(tmppath, 'r', encoding='utf-8') as f:
+            obfuscations = f.readlines()
+        obfuscations = [line.strip().split('###DIVIDEUNLIKELY####')[1] for line in obfuscations]
+
+        pairs = {query: obfuscated_query for query, obfuscated_query in zip(queries, obfuscations)}
+
+        already_obfuscated_queries = [query for query in queries if query in pairs]
+        del obfuscations, tmppaths, pairs
+
     if not extra_args is None and 'glove_embeddings' in extra_args:
         glove_embeddings = extra_args['glove_embeddings']
     else:
         glove_embeddings = load_glove_embeddings()
 
-    embedding_dim = glove_embeddings.vector_size
 
     glove_matrix = np.array([glove_embeddings[word] for word in glove_embeddings.index_to_key])
-
     epsilon = int(reformulation_type.split('_e')[-1])
-    mech = get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix)
+    mech = get_dp_mech(reformulation_type, glove_embeddings.vector_size, epsilon, glove_matrix)
 
     print(f"Generating responses with Differential Privacy ({reformulation_type})...")
 
     for i, query in tqdm(enumerate(queries)):
         if i % 100 and not i == 0:
             del mech
-            mech = get_dp_mech(reformulation_type, embedding_dim, epsilon, glove_matrix)
+            mech = get_dp_mech(reformulation_type, glove_embeddings.vector_size, epsilon, glove_matrix)
 
-        # obfuscated_query = obfuscate_text(query, mech, glove_embeddings)
-        obfuscated_query = obfuscate_text_memory_safer(query, mech, glove_embeddings)
+        if not query in already_obfuscated_queries:
+            obfuscated_query = obfuscate_text_memory_safer(query, mech, glove_embeddings)
 
-        with open(tmppath, 'a', encoding='utf-8') as f:
-            f.write(f"{query}###DIVIDEUNLIKELY####{obfuscated_query}\n")
+            with open(tmppath, 'a', encoding='utf-8') as f:
+                f.write(f"{query}###DIVIDEUNLIKELY####{obfuscated_query}\n")
+        else:
+            print(f"Query {i + 1} already obfuscated: {query}")
 
     with open(tmppath, 'r', encoding='utf-8') as f:
         obfuscations = f.readlines()
-
     obfuscations = [line.strip().split('###DIVIDEUNLIKELY####')[1] for line in obfuscations]
 
     pairs = {query: obfuscated_query for query, obfuscated_query in zip(queries, obfuscations)}
