@@ -434,8 +434,8 @@ def create_reformulations(
 
 def main_reformulate():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_name", type=str, default="all")
-    parser.add_argument("--reformulation_type", type=str, default="wordnet")
+    parser.add_argument("--dataset_name", type=str, default="irds:beir/nfcorpus/test")
+    parser.add_argument("--reformulation_type", type=str, default="vik_10")
     parser.add_argument("--model_name", type=str, default='gpt-3.5-turbo')
     args = parser.parse_args()
 
@@ -485,6 +485,8 @@ def main_reformulate():
             print('-' * 50)
             print(f'Dataset: {d}, reformulation: {rt}')
             create_reformulations(dataset_name=d, reformulation_type=rt, model_name=model_name, extra_args=extra_args)
+
+    print('Done!')
 
 
 def gpt3_ref_cleaner(reformulation, query, filename):

@@ -39,11 +39,11 @@ refs_types = {
 }
 
 dp_refs = [
-    "cmp_e1", "cmp_e5", "cmp_e50",
-    "mah_e1", "mah_e5", "mah_e50",
-    "vik_e1", "vik_e5", "vik_e50",
-    "vikm_e1", "vikm_e5", "vikm_e50",
-    "vikcmp_e1", "vikcmp_e5", "vikcmp_e50",
+    "cmp_e1", "cmp_e5", "cmp_e10", "cmp_e50",
+    "mah_e1", "mah_e5", "mah_e10", "mah_e50",
+    "vik_e1", "vik_e5", "vik_e10", "vik_e50",
+    "vikm_e1", "vikm_e5", "vikm_e10", "vikm_e50",
+    "vikcmp_e1", "vikcmp_e5", "vikcmp_e10", "vikcmp_e50",
 ]
 
 all_reformulation_types = [
