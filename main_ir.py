@@ -24,7 +24,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reformulation", type=str, default="wordnet", choices=all_reformulation_types)
     parser.add_argument("--retriever", type=str, default="bm25", choices=all_retrievers)
-    parser.add_argument("--dataset_name", type=str, default="irds:msmarco-document/trec-dl-2020", choices=all_ds)
+    parser.add_argument("--dataset_name", type=str, default="irds:beir/nfcorpus/test", choices=all_ds)
     parser.add_argument("--notes", type=str, default="")
     args = parser.parse_args()
 
@@ -42,6 +42,7 @@ def main(args):
 
     print('Reformulating queries...')
     topics = reformulate_queries(topics, args.reformulation, dataset_name=args.dataset_name)
+    print(topics.to_string())
 
     print('Getting retriever...')
     retrievers = get_retriever(args.dataset_name, args.retriever, index=index, indexref=indexref, dataset=dataset)
