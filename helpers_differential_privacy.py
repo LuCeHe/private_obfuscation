@@ -357,6 +357,7 @@ def use_diffpriv_glove(
 
     already_obfuscated_queries = []
     if tmppaths:
+        print(f"Loading obfuscations from {tmppaths[0]}...")
         # if the file already exists, load the obfuscations that were already done, so we don't repeat them
         tmppath = os.path.join(PODATADIR, tmppaths[0])
         with open(tmppath, 'r', encoding='utf-8') as f:
