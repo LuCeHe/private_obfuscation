@@ -199,7 +199,7 @@ def create_table(
 
 datasets_oi = [
     'irds:beir/nfcorpus/test',
-    # 'irds:beir/scifact/test',
+    'irds:beir/scifact/test',
     'irds:beir/trec-covid',
     'irds:beir/webis-touche2020/v2',
     # 'irds:msmarco-document/trec-dl-2019',
