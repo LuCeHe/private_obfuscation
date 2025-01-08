@@ -7,7 +7,6 @@ from private_obfuscation.paths import DATADIR
 
 
 def get_colbert_e2e(dataset):
-    # pt.init()
 
     import pyterrier_colbert.indexing
     import pyterrier_colbert as pycolbert
