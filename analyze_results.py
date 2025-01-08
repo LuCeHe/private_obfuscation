@@ -7,7 +7,7 @@ sys.path.append(WORKDIR)
 
 import pandas as pd
 from private_obfuscation.paths import EXPSDIR, PODATADIR, LOCAL_DATADIR
-from private_obfuscation.reformulators import get_reformulation_name
+from private_obfuscation.helpers.reformulators import get_reformulation_name
 from private_obfuscation.main_ir import all_reformulation_types, all_retrievers
 
 all_ds = [

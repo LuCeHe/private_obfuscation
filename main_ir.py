@@ -12,12 +12,12 @@ if not pt.started():
 
 RR, nDCG, P, R, AP = pt.measures.RR, pt.measures.nDCG, pt.measures.P, pt.measures.R, pt.measures.AP
 
-from private_obfuscation.retrievers import get_retriever, get_dataset
-from private_obfuscation.helpers_more import do_save_dicts, create_exp_dir
+from private_obfuscation.helpers.retrievers import get_retriever, get_dataset
+from private_obfuscation.helpers.helpers_more import do_save_dicts, create_exp_dir
 from private_obfuscation.paths import PODATADIR, LOCAL_DATADIR
-from private_obfuscation.helpers_more import all_ds, all_reformulation_types, \
+from private_obfuscation.helpers.helpers_more import all_ds, all_reformulation_types, \
     all_retrievers
-from private_obfuscation.reformulators import reformulate_queries
+from private_obfuscation.helpers.reformulators import reformulate_queries
 
 
 def parse_args():
